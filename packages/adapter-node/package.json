@@ -1,0 +1,29 @@
+{
+  "name": "@setupguard/adapter-node",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SetupGuard adapter for the Node.js / JavaScript / TypeScript ecosystem.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@setupguard/core": "workspace:*",
+    "semver": "^7.7.3"
+  }
+}
