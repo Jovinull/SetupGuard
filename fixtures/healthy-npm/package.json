@@ -1,0 +1,14 @@
+{
+  "name": "healthy-npm",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test",
+    "lint": "eslint .",
+    "ci": "npm run lint && npm run build && npm test"
+  }
+}
