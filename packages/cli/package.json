@@ -1,0 +1,32 @@
+{
+  "name": "@setupguard/cli",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SetupGuard command line interface.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "bin": {
+    "setupguard": "./dist/bin.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b"
+  },
+  "dependencies": {
+    "@setupguard/adapter-node": "workspace:*",
+    "@setupguard/core": "workspace:*"
+  }
+}
