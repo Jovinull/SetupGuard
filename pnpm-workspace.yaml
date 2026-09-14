@@ -1,0 +1,8 @@
+packages:
+  - 'packages/*'
+
+# esbuild (a Vitest dependency) fetches its native binary in a postinstall
+# script. pnpm 11 blocks every command until that script is explicitly allowed,
+# so a clone that does not set this cannot run `pnpm check`.
+allowBuilds:
+  esbuild: true

@@ -1,0 +1,34 @@
+{
+  "//": "Type-checks everything, including tests and this repo's own config files. Not a build: it maps package names straight to sources so it never needs dist/.",
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@setupguard/core": [
+        "./packages/core/src/index.ts"
+      ],
+      "@setupguard/adapter-node": [
+        "./packages/adapter-node/src/index.ts"
+      ],
+      "@setupguard/cli": [
+        "./packages/cli/src/index.ts"
+      ],
+      "@setupguard/vscode": [
+        "./packages/vscode/src/index.ts"
+      ],
+      "@setupguard/testing": [
+        "./testing/index.ts"
+      ]
+    }
+  },
+  "include": [
+    "packages/*/src/**/*.ts",
+    "packages/*/test/**/*.ts",
+    "vitest.config.ts",
+    "testing/**/*.ts"
+  ]
+}
