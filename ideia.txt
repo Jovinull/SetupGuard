@@ -1,0 +1,1087 @@
+Queria fazer uma extensão POPULAR de vscode, que enconbtrasse seu publico, faça uma pesquisa de mercado e me diga o que encontra e me sugere do melhor que temos para fazer.
+
+Pesquisei o cenário atual do Marketplace, tendências de 2025–2026, extensões recentes, comunidades e problemas recorrentes. Minha conclusão é que existe espaço para uma extensão popular, mas **não no caminho óbvio de fazer outro copiloto de IA**.
+
+VS Code continua sendo o ambiente de desenvolvimento dominante no Stack Overflow Developer Survey, enquanto ferramentas AI-first como Cursor e Claude Code crescem sem terem derrubado o VS Code. Ao mesmo tempo, 84% dos desenvolvedores já usam ou pretendem usar IA, mas 46% dizem desconfiar da precisão das respostas e 66% reclamam de soluções de IA que ficam “quase certas”. ([Stack Overflow Developer Survey][1])
+
+Isso cria uma oportunidade muito melhor.
+
+# Minha aposta: **SetupGuard**
+
+### “Clone. Open. Know what’s broken.”
+
+A extensão responderia automaticamente a uma pergunta absurdamente comum:
+
+> **“Se outra pessoa clonar este repositório agora, ela consegue rodá-lo?”**
+
+Não seria um instalador. Não seria um chatbot. Não seria outro dashboard cheio de gráficos.
+
+Seria um **diagnosticador contínuo do ambiente de desenvolvimento e do contrato do repositório**.
+
+Imagine abrir um projeto e aparecer:
+
+```text
+SETUPGUARD
+
+Project Readiness     82%
+
+✓ Node 22.11.0
+✓ pnpm 10.4
+✓ Dependencies installed
+✓ PostgreSQL reachable
+✓ Redis reachable
+✓ Port 3333 available
+
+✗ Missing DATABASE_URL
+✗ README references `pnpm start`, but script no longer exists
+! .env.example missing REDIS_URL
+! Docker Compose uses port 5432, already occupied
+! Node version differs from .nvmrc
+
+────────────────────────────
+2 blockers · 3 warnings
+
+[ Fix ] [ Explain ] [ Verify Setup ]
+```
+
+E isso ficaria atualizado conforme o repositório muda.
+
+## Por que eu escolheria isso
+
+O problema é real e recorrente. Em junho de 2026, uma discussão de onboarding descreveu exatamente o padrão de novos desenvolvedores perderem **2–3 dias** porque documentação está desatualizada e variáveis de ambiente não estão documentadas. Em outra discussão bastante popular, um desenvolvedor experiente reclamou de passar horas apenas montando um ambiente antes de conseguir escrever código. ([Reddit][2])
+
+Outra discussão de 2026 sobre documentação relata um novo desenvolvedor gastando dois dias seguindo instruções que já não valiam mais. ([Reddit][3])
+
+Esse é um problema que aparece em empresas, projetos open source, estudantes e desenvolvedores solo.
+
+E há outro sinal importante: extensões simples que eliminam uma fricção concreta conseguem crescer organicamente. O Streamlit Preview, por exemplo, foi criado basicamente porque seu autor estava cansado de trocar do VS Code para o navegador e chegou a aproximadamente **40 mil instalações em um ano**. ([Reddit][4])
+
+Esse é exatamente o tipo de comportamento que eu procuraria: **uma dor frequente, uma solução visual instantânea e zero aprendizado necessário**.
+
+## O mercado que eu descartei
+
+Minha leitura atual seria:
+
+| Ideia                               |    Demanda |          Concorrência | Chance que eu daria |
+| ----------------------------------- | ---------: | --------------------: | ------------------: |
+| Novo AI Copilot/chat                |     enorme |               absurda |               baixa |
+| Gerenciador de Claude/Codex/Cursor  |       alta |            muito alta |         média/baixa |
+| Gerenciador de MCP                  |       alta |            muito alta |         média/baixa |
+| Segurança de MCP/agentes            |       alta |                enorme |               baixa |
+| `.env` manager                      |       alta |                enorme |               baixa |
+| Dependency graph / architecture map |       alta |                enorme |         média/baixa |
+| API route explorer                  |        boa |                  alta |               média |
+| Port/process manager                |        boa |                  alta |               média |
+| **Repo/environment readiness**      | **enorme** | **ainda fragmentada** |            **alta** |
+
+Os primeiros grupos estão congestionados. Hoje existem Akashi para regras de Claude/Cursor/Codex/Gemini, Claude Code Manager, vários MCP managers e até marketplaces de skills. ([Marketplace do Visual Studio][5])
+
+Segurança ficou ainda pior como mercado para entrar do zero: já há MCPShield, KERN, BoostSecurity e até uma extensão da Cisco especificamente para MCP, skills e código produzido por agentes. ([Marketplace do Visual Studio][6])
+
+Dependency graphs/blast radius também estão lotados de projetos novos como CodeLayers, DepGraph, Impact Lens e Vestige. ([Marketplace do Visual Studio][7])
+
+E `.env` tem Dotenv-diff, Env Manager, Env Guardman, Environment Variable Viewer e vários outros. ([Marketplace do Visual Studio][8])
+
+Então eu não entraria nesses mercados.
+
+## Existe concorrente para nossa ideia?
+
+Sim, e isso é importante.
+
+Encontrei o **CAssets DevReady**, publicado recentemente, que tem como métrica principal exatamente reduzir o tempo de “clone até primeiro build bem-sucedido”. Ele detecta ferramentas, comandos e capacidades ausentes. ([Marketplace do Visual Studio][9])
+
+Isso significa que **não podemos simplesmente fazer “DevReady só que nosso”**.
+
+Eu mudaria o posicionamento.
+
+CAssets tenta:
+
+> preparar a workstation e ajudar o desenvolvedor a configurar o ambiente.
+
+O nosso faria:
+
+> **provar continuamente que o contrato de desenvolvimento do repositório continua verdadeiro.**
+
+Essa diferença é enorme.
+
+O SetupGuard não seria somente útil no primeiro dia.
+
+Depois de seis meses ele continuaria verificando o projeto.
+
+Mudou:
+
+```text
+"dev": "next dev"
+```
+
+para:
+
+```text
+"web": "next dev --turbo"
+```
+
+mas README ainda diz:
+
+```bash
+pnpm dev
+```
+
+SetupGuard:
+
+```text
+README.md:47
+
+⚠ Command does not exist:
+pnpm dev
+
+package.json defines:
+pnpm web
+
+Quick Fix:
+Replace `pnpm dev` → `pnpm web`
+```
+
+Isso vira quase um **ESLint para a operacionalidade do repositório**.
+
+## O MVP que eu construiria
+
+Eu faria o primeiro release deliberadamente pequeno e extremamente polido:
+
+1. **Detector automático do projeto.** `package.json`, lockfiles, `.nvmrc`, `.node-version`, Volta, `mise.toml`, Docker Compose, `.env*`, Makefile, Taskfile, Turbo, Nx e monorepos. Inicialmente JS/TS, Node, Bun, npm, pnpm e Yarn; depois Python, Go, Rust etc. TypeScript é uma excelente porta de entrada porque virou a linguagem com maior número de contribuidores no GitHub em 2025, crescendo mais de 66% ano contra ano. ([The GitHub Blog][10])
+
+2. **Readiness checks determinísticos.** Runtime correto, package manager correto, dependências instaladas, lockfile consistente, scripts existentes, variáveis obrigatórias, portas, Docker, bancos/Redis declarados e serviços necessários.
+
+3. **Documentation Drift.** Verificar comandos, arquivos, caminhos, nomes de scripts, env vars e portas mencionados em `README.md`, `CONTRIBUTING.md`, `AGENTS.md`, `CLAUDE.md` e documentação. Já existem ferramentas atacando partes desse problema, como Context Check para arquivos de agentes e Drift para documentação, o que valida a dor; nós juntaríamos isso ao conceito de “o projeto está operacional?”. ([Marketplace do Visual Studio][11])
+
+4. **Dashboard extremamente simples.** `READY`, `WARNINGS` ou `BLOCKED`. Nada de 34 gráficos.
+
+5. **Diagnostics nativos.** Problemas aparecem no painel `Problems`, exatamente como erro de TypeScript ou ESLint.
+
+6. **Quick Fix.** “Criar `.env` a partir de `.env.example`”, “usar Node 22”, “liberar porta 3333”, “instalar dependências”, “corrigir comando no README”. Qualquer ação destrutiva precisa de confirmação.
+
+7. **`setupguard doctor`.** O motor de análise não deve ficar preso ao VS Code. A extensão seria uma interface para uma CLI.
+
+8. **GitHub Action.** O mesmo motor rodaria no CI. Assim um PR que altera `package.json` e esquece o README poderia receber um erro automaticamente.
+
+9. **`.setupguard.yml` opcional.** Zero-config primeiro; configuração explícita quando o projeto for complexo.
+
+10. **MCP depois.** Codex, Claude ou Copilot poderiam chamar `setupguard_doctor`, `setupguard_explain` e `setupguard_verify`. A IA não decide se o ambiente funciona; o motor determinístico decide, e a IA só consome essa informação.
+
+Isso é importante: **não colocar IA no centro do produto**.
+
+### O efeito viral que eu perseguiria
+
+É aqui que acho que essa ideia tem mais chance que uma extensão normal.
+
+Um projeto open source começa a usar SetupGuard.
+
+Ele coloca:
+
+```json
+{
+  "recommendations": [
+    "setupguard.setupguard"
+  ]
+}
+```
+
+no `.vscode/extensions.json`.
+
+Agora cada pessoa que clona aquele projeto recebe a recomendação.
+
+Depois o projeto coloca:
+
+```yaml
+- uses: setupguard/action@v1
+```
+
+no GitHub Actions.
+
+Depois coloca no README:
+
+```text
+SetupGuard: passing ✓
+```
+
+Outro mantenedor vê.
+
+Instala.
+
+Outro repositório passa a recomendá-la.
+
+Esse é um mecanismo de aquisição orgânica **embutido no próprio produto**.
+
+E eu publicaria desde o primeiro dia tanto no **VS Code Marketplace quanto no Open VSX**, para pegar VSCodium e boa parte do ecossistema de editores compatíveis.
+
+## O grande diferencial
+
+Eu colocaria esta frase no site e no Marketplace:
+
+> **Your README says it works. SetupGuard proves it.**
+
+Ou:
+
+> **Clone. Open. Know what’s broken.**
+
+É facilmente explicável em dez segundos.
+
+Uma GIF de divulgação poderia mostrar:
+
+```text
+git clone projeto
+↓
+code projeto
+↓
+SetupGuard: 3 blockers
+↓
+Fix
+↓
+SetupGuard: READY ✓
+```
+
+Isso vende a ideia sozinho.
+
+## Eu acredito que pode ficar popular?
+
+**Sim. Mais do que a maioria das ideias de extensão que encontrei nessa pesquisa.**
+
+Não porque ninguém pensou em partes dela. Pensaram. Há ferramentas de `.env`, onboarding, documentação, ports, scripts e setup.
+
+A oportunidade é transformar tudo isso em uma categoria muito clara:
+
+**Repository Development Readiness.**
+
+Em vez de tentar ser:
+
+> “uma extensão com 70 ferramentas”.
+
+Ser:
+
+> “a extensão que garante que seu repositório ainda pode ser clonado e executado.”
+
+Esse foco faz muita diferença.
+
+E há espaço para criar um projeto tecnicamente interessante por trás: parser de manifests, adapters por ecossistema, dependency checks, daemon incremental, diagnostics, CLI, CI, VS Code Extension API, MCP e posteriormente plugins comunitários.
+
+### Como eu começaria
+
+Eu começaria **exclusivamente em TypeScript/JavaScript**, mas faria a arquitetura de adapters desde o primeiro commit:
+
+```text
+setupguard/
+ ├─ packages/
+ │   ├─ core/
+ │   ├─ cli/
+ │   ├─ vscode/
+ │   ├─ adapters-node/
+ │   └─ github-action/
+ │
+ └─ adapters/
+     ├─ npm
+     ├─ pnpm
+     ├─ yarn
+     ├─ bun
+     ├─ docker
+     ├─ dotenv
+     ├─ next
+     ├─ nest
+     ├─ adonis
+     └─ turbo
+```
+
+Se conseguirmos fazer o Node/TypeScript impecável primeiro, já temos um público gigantesco. Depois Python seria provavelmente a expansão seguinte, já que TypeScript e Python estão hoje entre os ecossistemas de maior crescimento no GitHub. ([The GitHub Blog][10])
+
+Eu **apostaria nesse projeto** em vez das outras opções que encontrei.
+
+E não faria um protótipo descartável. Faria desde o princípio pensando em um projeto open source grande: core independente do editor, CLI, extension, API de adapters, fixtures de projetos reais, benchmarks, GitHub Action e documentação séria. Se acertarmos o UX, isso tem potencial para ser daquele tipo de extensão que alguém instala em um projeto e depois começa a querer em **todos**.
+
+Se você quiser seguir com essa, eu consigo fazer a próxima etapa como um **levantamento competitivo específico do SetupGuard**, desmontando CAssets DevReady e os concorrentes adjacentes feature por feature e, a partir disso, desenhar **o escopo exato da v0.1, arquitetura do monorepo, nome definitivo, identidade e estratégia de lançamento no Marketplace/Hacker News/Reddit/GitHub**.
+
+Como esse mercado de extensões e agentes está mudando muito rápido, também posso monitorar novos concorrentes e te avisar quando aparecer algo que ameace ou valide esse nicho.
+
+[1]: https://survey.stackoverflow.co/2025/?utm_source=chatgpt.com "2025 Stack Overflow Developer Survey"
+[2]: https://www.reddit.com/r/AskProgramming/comments/1u78r6x/how_do_you_all_handle_onboarding_new_devs_onto_an/?utm_source=chatgpt.com "How do you all handle onboarding new devs onto an existing repo?"
+[3]: https://www.reddit.com/r/ExperiencedDevs/comments/1qejexx/documentation_is_three_years_out_of_date_and/?utm_source=chatgpt.com "Documentation is three years out of date and nobody has time to fix it"
+[4]: https://www.reddit.com/r/StreamlitOfficial/comments/1vjspuj/streamlit_preview_visual_studio_marketplace/?utm_source=chatgpt.com "Streamlit Preview - Visual Studio Marketplace"
+[5]: https://marketplace.visualstudio.com/items?itemName=akashi.akashi "Akashi — AI Prompt, Rules, Add-ons, Skills & Message Visualizer (Built using Claude with ❤️ ) - Visual Studio Marketplace"
+[6]: https://marketplace.visualstudio.com/items?itemName=MCPShield.mcpshield&utm_source=chatgpt.com "MCPShield - MCP Security Scanner - Visual Studio Marketplace"
+[7]: https://marketplace.visualstudio.com/items?itemName=CodeLayers.codelayers&utm_source=chatgpt.com "CodeLayers — Blast Radius - Visual Studio Marketplace"
+[8]: https://marketplace.visualstudio.com/items?itemName=Chrilleweb.dotenv-diff&utm_source=chatgpt.com "Dotenv-diff - Visual Studio Marketplace"
+[9]: https://marketplace.visualstudio.com/items?itemName=clusterassets.cassets&utm_source=chatgpt.com "CAssets DevReady — Clone. Open. Code. - Visual Studio Marketplace"
+[10]: https://github.blog/news-insights/octoverse/octoverse-a-new-developer-joins-github-every-second-as-ai-leads-typescript-to-1/?utm_source=chatgpt.com "Octoverse: A new developer joins GitHub every second as AI leads TypeScript to #1 - The GitHub Blog"
+[11]: https://marketplace.visualstudio.com/items?itemName=jubinsoni.contextcheck&utm_source=chatgpt.com "Context Check - Visual Studio Marketplace"
+
+
+mas eu teria gastos para manter isos? fiquei confuso como funcionaria para garantir funcionaento como deve ser e tals
+
+
+Dá para fazer esse projeto com **custo de manutenção praticamente zero**, porque a melhor arquitetura não precisa de servidor próprio.
+
+A extensão pode funcionar **100% localmente**, dentro da máquina do usuário. Ela não precisa “garantir” que o projeto funciona executando tudo em uma infraestrutura nossa; ela verifica o ambiente do próprio desenvolvedor usando regras determinísticas.
+
+Pensa assim. A extensão abre um projeto e encontra:
+
+```text
+package.json
+pnpm-lock.yaml
+.nvmrc
+.env.example
+docker-compose.yml
+README.md
+```
+
+Ela lê esses arquivos localmente e monta um conjunto de verificações.
+
+Por exemplo:
+
+```text
+.nvmrc
+22.11.0
+```
+
+Então verifica:
+
+```bash
+node --version
+```
+
+Se der:
+
+```text
+v20.18.0
+```
+
+resultado:
+
+```text
+✗ Node version
+
+Expected: 22.11.0
+Found:    20.18.0
+```
+
+Não existe servidor nosso nessa operação.
+
+Outro exemplo.
+
+O projeto tem:
+
+```json
+{
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build"
+  }
+}
+```
+
+Mas README diz:
+
+```bash
+pnpm start
+```
+
+A extensão compara os dois e detecta:
+
+```text
+⚠ Documentation drift
+
+README.md:42 references:
+pnpm start
+
+No "start" script exists in package.json.
+```
+
+Também totalmente local.
+
+---
+
+### Como ela saberia que o projeto realmente funciona?
+
+Aqui existe uma diferença importante.
+
+Nós não devemos prometer:
+
+> “Seu software não possui bugs.”
+
+Isso seria impossível.
+
+A promessa seria:
+
+> **“Seu ambiente de desenvolvimento atende às condições necessárias para este repositório funcionar.”**
+
+O SetupGuard faria vários níveis de verificação.
+
+Por exemplo:
+
+```text
+Environment
+✓ Node 22
+✓ pnpm 10
+✓ Git installed
+
+Dependencies
+✓ node_modules present
+✓ lockfile synchronized
+
+Configuration
+✓ DATABASE_URL
+✓ REDIS_URL
+✓ JWT_SECRET
+✓ .env matches .env.example
+
+Services
+✓ PostgreSQL reachable
+✓ Redis reachable
+✓ port 3333 available
+
+Project
+✓ pnpm build
+✓ TypeScript compilation
+✓ migrations available
+
+Documentation
+✓ documented scripts exist
+✓ documented files exist
+✓ documented ports match configuration
+
+────────────────────
+
+READY ✓
+```
+
+É mais parecido com executar um **check-up automatizado** do projeto.
+
+---
+
+## O segredo seria criar um motor de checks
+
+Internamente poderíamos ter algo como:
+
+```ts
+interface Check {
+  id: string
+  name: string
+
+  detect(project: Project): boolean
+
+  run(context: Context): Promise<Result>
+}
+```
+
+E checks:
+
+```text
+NodeVersionCheck
+PackageManagerCheck
+DependenciesCheck
+EnvironmentVariablesCheck
+PortCheck
+DockerCheck
+PostgresCheck
+RedisCheck
+BuildCheck
+READMECommandCheck
+LockfileCheck
+GitCheck
+```
+
+Cada ecossistema poderia adicionar seus próprios checks.
+
+Por exemplo:
+
+```text
+Node
+ ├ package.json
+ ├ npm
+ ├ pnpm
+ ├ yarn
+ └ bun
+
+Frameworks
+ ├ Next.js
+ ├ NestJS
+ ├ AdonisJS
+ └ Express
+
+Infrastructure
+ ├ Docker
+ ├ PostgreSQL
+ ├ Redis
+ └ MySQL
+```
+
+Depois:
+
+```text
+Python
+Rust
+Go
+Java
+.NET
+...
+```
+
+Isso é o que faria o projeto crescer.
+
+---
+
+# E quanto eu gastaria?
+
+No começo:
+
+**provavelmente R$ 0/mês.**
+
+Você precisaria basicamente de:
+
+```text
+GitHub
+↓
+gratuito
+
+VS Code Marketplace
+↓
+gratuito
+
+Open VSX
+↓
+gratuito
+
+npm
+↓
+gratuito para pacote público
+
+GitHub Actions
+↓
+gratuito dentro dos limites adequados para open source
+```
+
+A extensão roda no computador da pessoa.
+
+Sem:
+
+```text
+AWS
+VPS
+banco de dados
+Redis
+API
+fila
+workers
+S3
+login
+Firebase
+Supabase
+```
+
+Nada disso é necessário.
+
+---
+
+## Até a arquitetura poderia ser assim
+
+```text
+                  USER COMPUTER
+
+                        │
+                        ▼
+
+                VS Code Extension
+                        │
+                        ▼
+                 SetupGuard Core
+                  /     |      \
+                 /      |       \
+                ▼       ▼        ▼
+           filesystem commands  sockets
+                │       │        │
+                ▼       ▼        ▼
+          package.json node     PostgreSQL
+          README       docker    Redis
+          .env         git       ports
+          compose      pnpm
+
+                        │
+                        ▼
+
+                Diagnostic Result
+
+               READY / WARNING
+                    / BLOCKED
+```
+
+Tudo acontece ali.
+
+Nenhum dado precisa sair da máquina.
+
+Inclusive isso vira argumento de marketing:
+
+> **Local-first. No source code leaves your machine.**
+
+Muito bom para empresas.
+
+---
+
+# E o GitHub Action?
+
+Também não precisa custar para você.
+
+Nós fornecemos algo como:
+
+```yaml
+- uses: setupguard/setupguard-action@v1
+```
+
+Quando alguém abre um PR, o GitHub do **próprio repositório** executa:
+
+```bash
+setupguard check
+```
+
+Portanto não somos nós pagando máquina para rodar aquilo.
+
+O usuário utiliza a infraestrutura do GitHub Actions dele.
+
+Resultado:
+
+```text
+SetupGuard / Repository Readiness
+
+❌ FAILED
+
+2 errors
+
+- README references nonexistent `pnpm start`
+- REDIS_URL missing from .env.example
+```
+
+O desenvolvedor corrige.
+
+Novo commit.
+
+```text
+SetupGuard / Repository Readiness
+
+✓ PASSED
+```
+
+---
+
+# Então onde poderiam aparecer gastos?
+
+Só se quisermos criar serviços extras.
+
+Por exemplo, no futuro poderíamos ter:
+
+```text
+SetupGuard Cloud
+```
+
+com dashboard:
+
+```text
+organization/
+ ├ backend-api       98%
+ ├ frontend          100%
+ ├ mobile             84%
+ ├ billing            72%
+ └ infrastructure     91%
+```
+
+Histórico:
+
+```text
+Repository health
+
+Jan  ██████████ 100%
+Feb  █████████░  92%
+Mar  ███████░░░  73%
+Apr  ██████████ 100%
+```
+
+Aí sim precisaríamos de:
+
+```text
+API
+PostgreSQL
+storage
+auth
+workers
+hosting
+```
+
+Mas eu **não faria isso inicialmente**.
+
+---
+
+# IA também seria opcional
+
+Esse ponto é importante porque poderia gerar gasto.
+
+Eu não colocaria:
+
+```text
+SetupGuard
+   ↓
+OpenAI API
+```
+
+como requisito.
+
+O core seria:
+
+```text
+deterministic rules
+```
+
+Por exemplo:
+
+```ts
+if (
+  readme.commands.includes("pnpm dev") &&
+  !packageJson.scripts.dev
+) {
+  report(...)
+}
+```
+
+Isso custa absolutamente nada.
+
+Mais para frente poderíamos oferecer:
+
+```text
+Explain with AI
+```
+
+mas usando **a IA que o usuário já possui**.
+
+Por exemplo:
+
+```text
+Claude Code
+Codex
+Copilot
+Gemini
+local Ollama
+Qwen
+```
+
+através de integração/MCP.
+
+Nesse caso:
+
+```text
+SetupGuard encontra o erro
+
+        ↓
+
+"REDIS_URL está ausente"
+
+        ↓
+
+Codex/Claude:
+"Quer que eu corrija?"
+```
+
+SetupGuard não paga os tokens.
+
+---
+
+# E como evitar falsos positivos?
+
+Aqui estaria grande parte do trabalho técnico.
+
+A extensão não poderia simplesmente assumir coisas.
+
+Por exemplo:
+
+```text
+DATABASE_URL ausente
+```
+
+Pode ser realmente um erro.
+
+Mas pode ser uma variável opcional.
+
+Então precisamos diferenciar:
+
+```text
+REQUIRED
+OPTIONAL
+INFERRED
+UNKNOWN
+```
+
+Algo como:
+
+```text
+DATABASE_URL
+
+Source:
+src/database/config.ts
+
+Confidence:
+HIGH
+
+Required because:
+env.get("DATABASE_URL")
+```
+
+Enquanto:
+
+```text
+SENTRY_DSN
+
+Confidence:
+LOW
+
+Referenced only in:
+.env.example
+
+Possibly optional.
+```
+
+Isso dá credibilidade à extensão.
+
+---
+
+## Teríamos dois tipos de checks
+
+### Checks seguros
+
+Podem rodar automaticamente.
+
+```text
+✓ arquivo existe
+✓ programa instalado
+✓ versão
+✓ porta ocupada
+✓ env definida
+✓ script existe
+✓ docker disponível
+✓ lockfile
+```
+
+Sem efeitos colaterais.
+
+E checks como:
+
+```text
+pnpm build
+docker compose up
+prisma migrate
+npm test
+```
+
+podem alterar coisas, consumir CPU ou demorar.
+
+Esses não devem rodar escondidos.
+
+A interface mostraria:
+
+```text
+Deep Verification
+
+○ pnpm build
+○ pnpm test
+○ database connection
+○ docker services
+
+[ Run verification ]
+```
+
+Assim a extensão continua segura.
+
+---
+
+# Poderíamos até criar níveis
+
+Eu gosto bastante desta arquitetura:
+
+```text
+LEVEL 1 — Static
+< 100 ms
+
+package.json
+README
+.env.example
+lockfiles
+configs
+```
+
+↓
+
+```text
+LEVEL 2 — Environment
+< 2 sec
+
+node --version
+docker --version
+git --version
+ports
+environment variables
+```
+
+↓
+
+```text
+LEVEL 3 — Connectivity
+
+Postgres
+Redis
+HTTP services
+Docker daemon
+```
+
+↓
+
+```text
+LEVEL 4 — Verification
+
+pnpm build
+pnpm test
+lint
+typecheck
+custom commands
+```
+
+E o usuário vê:
+
+```text
+SetupGuard
+
+Static          ✓
+Environment     ✓
+Services        ✓
+Build           ✓
+
+PROJECT READY
+```
+
+Essa estrutura é simples de compreender.
+
+---
+
+# E tem uma coisa que eu mudaria na ideia original
+
+Eu **não faria SetupGuard tentar consertar tudo automaticamente inicialmente**.
+
+Primeiro:
+
+```text
+detectar
+explicar
+localizar
+```
+
+Depois:
+
+```text
+quick fixes seguros
+```
+
+Só depois:
+
+```text
+automated remediation
+```
+
+Porque a reputação da extensão depende de uma coisa:
+
+> **quando SetupGuard disser que algo está errado, normalmente estar realmente errado.**
+
+Uma extensão que cospe 40 warnings inúteis é desinstalada.
+
+Uma extensão que diz:
+
+```text
+SetupGuard
+
+2 blockers.
+
+DATABASE_URL missing.
+Node 20 installed; project requires Node 22.
+```
+
+e está certa quase sempre...
+
+fica instalada.
+
+---
+
+# O modelo poderia permanecer gratuito indefinidamente
+
+Inclusive eu considero essa a melhor estratégia.
+
+```text
+SetupGuard Core
+MIT / Apache-2.0
+
+VS Code extension
+Free
+
+CLI
+Free
+
+GitHub Action
+Free
+
+Plugin SDK
+Free
+```
+
+Você poderia nunca monetizar e ainda criar algo bastante grande para seu nome e GitHub.
+
+Ou, se um dia crescer:
+
+```text
+SetupGuard Cloud
+SetupGuard Teams
+SetupGuard Enterprise
+```
+
+virariam produtos pagos.
+
+Mas você **não precisaria bancar usuários gratuitos**.
+
+Se tivermos:
+
+```text
+100 usuários
+```
+
+seu custo:
+
+```text
+~R$ 0
+```
+
+Se tivermos:
+
+```text
+10.000 usuários
+```
+
+seu custo:
+
+```text
+~R$ 0
+```
+
+Se tivermos:
+
+```text
+1.000.000 usuários
+```
+
+o funcionamento principal ainda pode custar para você:
+
+```text
+~R$ 0
+```
+
+porque o processamento ocorre nas máquinas deles.
+
+Talvez você pague domínio, uma landing page ou algum serviço administrativo por conveniência, mas **não é um SaaS cuja conta aumenta linearmente conforme chegam usuários**.
+
+E isso é justamente uma das coisas que mais gosto nessa ideia para você: dá para perseguir popularidade sem ficar com medo de a extensão viralizar e você acordar com uma conta de cloud gigantesca.
