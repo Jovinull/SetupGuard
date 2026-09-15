@@ -27,11 +27,15 @@ export type IgnorePatternError =
   | 'absolute'
   | 'traversal'
   | 'negation'
-  | 'unsupported-syntax';
+  | 'unsupported-syntax'
+  | 'control-characters'
+  | 'not-canonical';
 
 export interface NormalizedIgnorePattern {
   readonly pattern?: string;
   readonly error?: IgnorePatternError;
+  /** For `not-canonical`: the form the author almost certainly meant. */
+  readonly canonical?: string;
 }
 
 /** Windows drive-letter roots, e.g. `C:/x` or `C:\x`. */
@@ -40,27 +44,45 @@ const WINDOWS_ABSOLUTE = /^[A-Za-z]:[\\/]/;
 /** Constructs this dialect does not implement and must not silently accept. */
 const UNSUPPORTED = /[[\]{}()!+@]/;
 
+/** Control characters, including newline and tab. A pattern is a single path. */
+// eslint-disable-next-line no-control-regex -- matching control characters is the point
+const CONTROL_CHARACTERS = new RegExp('[\\u0000-\\u001F\\u007F]');
+
 /**
- * Normalise a pattern to a workspace-relative POSIX form, or explain why it
- * cannot be used.
+ * Validate a pattern, or explain why it cannot be used.
  *
  * Everything that could point outside the workspace is rejected rather than
  * clamped: an ignore rule that quietly means something else is how a scan stops
  * looking at the very thing it was meant to check.
+ *
+ * A pattern must already be **canonical** — no `./` prefix, no backslash
+ * separators, no empty or `.` segments, no surrounding whitespace. An earlier
+ * version quietly rewrote those forms, which made `docs` and `./docs` collide
+ * as duplicates after normalisation while `uniqueItems` in the JSON Schema saw
+ * two different strings. Rejecting the non-canonical spelling, with the
+ * canonical one in the message, keeps the schema and this function agreeing on
+ * the same set of valid documents. `.setupguard.yml` is committed and shared
+ * across platforms, so there is one right spelling regardless of who writes it.
  */
 export function normalizeIgnorePattern(raw: string): NormalizedIgnorePattern {
-  const unified = raw.replace(/\\/g, '/').trim();
+  if (CONTROL_CHARACTERS.test(raw)) return { error: 'control-characters' };
 
-  if (unified === '') return { error: 'empty' };
-  if (unified.startsWith('!')) return { error: 'negation' };
-  if (unified.startsWith('/') || WINDOWS_ABSOLUTE.test(raw)) return { error: 'absolute' };
-  if (UNSUPPORTED.test(unified)) return { error: 'unsupported-syntax' };
+  const probe = raw.trim().replace(/\\/g, '/');
+  const canonical = probe
+    .split('/')
+    .filter((segment) => segment !== '' && segment !== '.')
+    .join('/');
 
-  const segments = unified.split('/').filter((segment) => segment !== '' && segment !== '.');
-  if (segments.some((segment) => segment === '..')) return { error: 'traversal' };
-  if (segments.length === 0) return { error: 'empty' };
+  if (canonical === '') return { error: 'empty' };
+  if (probe.startsWith('!')) return { error: 'negation' };
+  // Tested against the unified, trimmed form: ` C:\Windows` is just as absolute
+  // as `C:\Windows`, and checking the raw string let the leading space through.
+  if (probe.startsWith('/') || WINDOWS_ABSOLUTE.test(probe)) return { error: 'absolute' };
+  if (UNSUPPORTED.test(probe)) return { error: 'unsupported-syntax' };
+  if (canonical.split('/').some((segment) => segment === '..')) return { error: 'traversal' };
 
-  return { pattern: segments.join('/') };
+  if (canonical !== raw) return { error: 'not-canonical', canonical };
+  return { pattern: canonical };
 }
 
 /** True when the workspace-relative path is covered by any pattern. */

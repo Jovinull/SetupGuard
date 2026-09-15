@@ -426,7 +426,10 @@ function readIgnore(value: unknown, at: Locator, diagnostics: ConfigDiagnostic[]
           {
             ...at(['ignore', index]),
             path,
-            remediation: 'Patterns must be relative to the workspace root and may use * and **.',
+            remediation:
+              normalized.canonical !== undefined
+                ? `Write it as "${redact(normalized.canonical)}".`
+                : 'Patterns must be relative to the workspace root and may use * and **.',
           },
         ),
       );
@@ -459,6 +462,10 @@ function describePatternError(error: string | undefined): string {
       return 'a negation, which is not supported';
     case 'unsupported-syntax':
       return 'using syntax this dialect does not implement';
+    case 'control-characters':
+      return 'containing control characters; a pattern is a single path';
+    case 'not-canonical':
+      return 'not in its canonical form';
     default:
       return 'empty';
   }
