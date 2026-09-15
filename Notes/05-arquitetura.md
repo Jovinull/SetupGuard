@@ -55,7 +55,7 @@ setupguard/
 │  ├─ core/           @setupguard/core
 │  ├─ adapter-node/   @setupguard/adapter-node
 │  ├─ cli/            @setupguard/cli
-│  └─ vscode/         @setupguard/vscode
+│  └─ vscode/         setupguard
 ├─ fixtures/
 ├─ testing/
 └─ Notes/
@@ -157,7 +157,7 @@ Metas de cobertura e orçamento de performance continuam **Em aberto**; ainda n�
 | Biblioteca de CLI | nenhuma; parser próprio (superfície pequena, contrato de exit code é o que importa) |
 | Parser de Markdown | nenhum; scanner de fences próprio (só precisamos de blocos shell e code spans) |
 | Dependências de runtime | `semver` (adapter-node) e `yaml` (core, para `.setupguard.yml`) — ambas sem dependências transitivas |
-| Protocolo extensão ↔ core | chamada de função em processo; `@setupguard/vscode` projeta `Report` em diagnostics puros, sem depender do módulo `vscode` |
+| Protocolo extensão ↔ core | chamada de função em processo; no pacote `setupguard`, só `src/extension.ts` importa o módulo `vscode` — projeção, ciclo de vida, status bar e relatório são puros |
 | Licença | MIT |
 
 ### Ainda não decididas

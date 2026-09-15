@@ -28,6 +28,7 @@ Slogans propostos no material de origem:
 13. [Decisões e questões em aberto](13-decisoes-e-questoes-em-aberto.md)
 14. [Implementação v0.1 — fundação](14-implementacao-v0.1.md)
 15. [Configuração — `.setupguard.yml`](15-configuracao.md)
+16. [Extensão VS Code — implementação](16-extensao-vscode-implementada.md)
 
 ## Princípios que devem orientar qualquer implementação
 
@@ -45,6 +46,8 @@ Slogans propostos no material de origem:
 O material de origem é uma pesquisa e concepção inicial: define o problema, o posicionamento, o conjunto desejado de checks e uma arquitetura de alto nível, mas não continha implementação.
 
 A partir de 2026-09-14 existe uma **fundação implementada** — monorepo TypeScript, motor `core`, adapter Node, CLI e nove checks seguros. O que o código de fato faz está em [Implementação v0.1](14-implementacao-v0.1.md), que é a referência quando um documento conceitual e o código divergirem.
+
+Desde 2026-09-15 existe também uma **extensão VS Code instalável**, descrita em [Extensão VS Code — implementação](16-extensao-vscode-implementada.md). Ela não foi publicada em nenhum marketplace.
 
 Tudo que continua indefinido segue marcado nesta documentação como **Em aberto**. Exemplos e nomes de APIs extraídos da ideia devem ser tratados como propostas, não como contratos já estabilizados.
 

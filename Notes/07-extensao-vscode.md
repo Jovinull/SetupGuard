@@ -4,11 +4,20 @@
 
 A extensão é a principal experiência visual e o canal inicial de distribuição, mas não contém a lógica de negócio exclusiva. Ela consome o core e traduz os resultados para convenções nativas do editor.
 
-## Estado em v0.1
+## Estado atual
 
-Existe `packages/vscode` com **apenas** a projeção `Report → EditorDiagnostic[]`: conversão de posições 1-based para 0-based, mapeamento de severidade para a escala do editor, e separação dos findings que não têm arquivo (`unplaced`). O pacote **não** depende do módulo `vscode`, então roda e é testado em Node puro.
+A extensão existe e é instalável. O que ela faz está descrito em
+[16-extensao-vscode-implementada.md](16-extensao-vscode-implementada.md), que é
+a referência quando este documento e o código divergirem.
 
-Não existem ainda: manifest da extensão, activation events, views, comandos, status bar, Quick Fixes nem tratamento de Workspace Trust. Tudo isso é o próximo marco.
+Em resumo: análise automática por pasta de workspace, status bar com os quatro
+estados de readiness, integração com o painel Problems, comandos
+`SetupGuard: Run Diagnosis` e `SetupGuard: Show Report`, relatório em documento
+virtual somente-leitura, re-análise com debounce a partir de watchers, suporte
+declarado a workspaces não confiáveis e VSIX construído localmente.
+
+Não existem ainda: Quick Fixes, view própria na barra lateral e testes dentro do
+Extension Host. A extensão **não foi publicada** em nenhum marketplace.
 
 ## Experiência proposta
 
@@ -45,7 +54,7 @@ A extensão deve acompanhar mudanças do repositório e atualizar checks aplicá
 - build, teste e outros comandos profundos devem ser iniciados explicitamente;
 - resultados precisam indicar quando estão desatualizados ou quando um nível não foi executado.
 
-Debounce, watchers, cache e frequência estão **Em aberto**.
+Debounce e watchers foram decididos (750 ms, lista de globs explícita); ver o documento 16. Cache e execução incremental continuam **Em aberto**.
 
 ## Quick Fixes sugeridos
 
@@ -70,10 +79,10 @@ Qualquer ação destrutiva exige confirmação. Além disso, a extensão não de
 
 ## Distribuição
 
-Publicar desde o início em:
+A intenção continua sendo publicar em VS Code Marketplace e Open VSX. **Nada foi
+publicado até agora.**
 
-- VS Code Marketplace;
-- Open VSX.
-
-Identificador da extensão, publisher, requisitos mínimos de VS Code, política de atualização e processo de publicação estão **Em aberto**.
+Decidido: identificador `jovinull.setupguard`, requisito mínimo VS Code 1.90,
+`extensionKind: ["workspace"]`. Política de atualização e processo de publicação
+continuam **Em aberto**.
 

@@ -89,6 +89,33 @@ Tomadas durante a implementação da fundação em 2026-09-14. Cada uma está de
 - **Exit codes:** 0 sem achados no limiar · 1 com achados · 2 uso inválido · 3 `INCOMPLETE` — o diagnóstico é parcial: algo não pôde ser verificado, ou nenhum check chegou a uma conclusão. Nem aprovação nem reprovação do projeto. `--fail-on never` não suprime o 3.
 - **Output estruturado:** JSON versionado por `schemaVersion`.
 
+### Extensão VS Code
+
+Decidido em 2026-09-15; detalhes e justificativas em
+[16-extensao-vscode-implementada.md](16-extensao-vscode-implementada.md).
+
+- **Identidade:** pacote `setupguard`, publisher `jovinull`, ID
+  `jovinull.setupguard`. Escopo `@org/nome` não é aceito num manifesto de
+  extensão.
+- **Versão mínima do editor:** VS Code 1.90. `extensionKind: ["workspace"]`.
+- **UI:** status bar + painel Problems + documento virtual somente-leitura.
+  **Sem WebView** e sem view própria na barra lateral.
+- **Gatilhos:** activation por `workspaceContains:package.json` ou
+  `.setupguard.yml`; re-análise por watchers com debounce de 750 ms e guarda de
+  geração.
+- **Workspace Trust:** `untrustedWorkspaces.supported: true`, porque os níveis
+  implementados não criam processo. Os níveis 3 e 4 exigirão confiança.
+- **Multi-root:** uma sessão por pasta; Problems mostra todas, a status bar
+  mostra a pior.
+- **Comandos:** `setupguard.runDiagnosis` e `setupguard.showReport`. Nenhum
+  Quick Fix.
+- **Configuração:** a extensão não contribui nada para `settings.json`. O que
+  vale configurar pertence ao `.setupguard.yml` versionado.
+- **Resultados desatualizados:** o último relatório continua visível enquanto
+  uma nova execução acontece, com o ícone de progresso na status bar.
+- **Publicação:** nenhuma. VSIX construído localmente; nenhum script chama
+  `vsce publish` ou `ovsx`.
+
 ## Em aberto — produto e escopo
 
 - nome definitivo, domínio, marca e slogans finais;
@@ -133,14 +160,12 @@ Tomadas durante a implementação da fundação em 2026-09-14. Cada uma está de
 
 ## Em aberto — VS Code
 
-- publisher e extension ID;
-- versão mínima do editor;
-- UI definitiva (view, status bar, tree, webview ou combinação);
-- gatilhos/frequência de análise;
-- comportamento com Workspace Trust;
-- comandos e Quick Fixes publicados;
-- forma de apresentar resultados desatualizados/inconclusivos;
-- pipeline de publicação e atualização.
+- Quick Fixes: quais, e com que fluxo de confirmação;
+- view própria na barra lateral, se algum dia for necessária;
+- cache e análise incremental para repositórios grandes;
+- testes dentro do Extension Host (`@vscode/test-electron`);
+- pipeline de publicação e atualização em Marketplace e Open VSX;
+- ícone da extensão e identidade visual.
 
 ## Em aberto — GitHub Action
 

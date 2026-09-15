@@ -7,10 +7,11 @@ readiness**: it checks whether someone who clones this repository right now
 could actually prepare and run it, following only what the repository itself
 declares.
 
-This repository is at **v0.1 (foundation)**. The engine, the Node.js adapter and
-the CLI exist and are tested; the VS Code extension and the GitHub Action do
-not. The product specification lives in [`Notes/`](Notes/README.md) and is the
-source of truth for scope and decisions.
+This repository is at **v0.1**. The engine, the Node.js adapter, the CLI and the
+VS Code extension exist and are tested; the GitHub Action does not. The
+extension has **not** been published to any marketplace. The product
+specification lives in [`Notes/`](Notes/README.md) and is the source of truth
+for scope and decisions.
 
 ## Try it
 
@@ -20,6 +21,18 @@ pnpm build
 node packages/cli/dist/bin.js .
 node packages/cli/dist/bin.js fixtures/broken-node-project
 ```
+
+### In VS Code
+
+```bash
+pnpm --filter setupguard run package
+code --install-extension packages/vscode/setupguard-0.1.0.vsix
+```
+
+Open a repository: the status bar tells you where it stands, the Problems panel
+points at the files, and `SetupGuard: Show Report` explains the whole diagnosis.
+The extension starts no process — see
+[Notes/16](Notes/16-extensao-vscode-implementada.md).
 
 ## What it checks today
 
@@ -104,7 +117,7 @@ packages/
   core/          engine: model, adapter/check contracts, config, pipeline, report schema
   adapter-node/  Node.js/TypeScript ecosystem: facts and checks
   cli/           `setupguard` command
-  vscode/        report -> editor diagnostics projection (no extension host yet)
+  vscode/        the VS Code extension (`setupguard`)
 schemas/         generated JSON Schema for .setupguard.yml
 fixtures/        real project directories used by the tests
 testing/         shared test helpers

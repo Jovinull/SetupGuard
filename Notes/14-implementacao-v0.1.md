@@ -54,7 +54,7 @@ setupguard/
 │  ├─ core/           @setupguard/core          motor independente de ecossistema
 │  ├─ adapter-node/   @setupguard/adapter-node  ecossistema Node/JS/TS
 │  ├─ cli/            @setupguard/cli           comando `setupguard`
-│  └─ vscode/         @setupguard/vscode        projeção report → diagnostics
+│  └─ vscode/         setupguard                extensão VS Code
 ├─ fixtures/          projetos reais usados pelos testes
 ├─ testing/           helpers de teste compartilhados
 └─ Notes/             especificação e registro de decisões
@@ -487,17 +487,18 @@ parâmetro.
 
 ## VS Code
 
-`packages/vscode` implementa **apenas** a projeção `Report → EditorDiagnostic[]`
-(0-based, severidades no formato do editor, findings sem arquivo separados em
-`unplaced`). O pacote **não** depende do módulo `vscode`, então é testável em
-Node puro.
+`packages/vscode` é a extensão completa, documentada em
+[16-extensao-vscode-implementada.md](16-extensao-vscode-implementada.md). O
+pacote foi renomeado para `setupguard`, porque o `name` de um manifesto de
+extensão não aceita escopo.
 
-Manifest da extensão, activation events, views, comandos e Quick Fixes não
-existem — são o próximo marco.
+Só `src/extension.ts` importa o módulo `vscode`; a projeção
+`Report → EditorDiagnostic[]`, o ciclo de vida, a status bar, o relatório e a
+lista de watchers são puros e testados em Node.
 
 ## Testes
 
-Vitest, 386 testes em 20 arquivos, executando contra o `src` (sem build prévio).
+Vitest, 454 testes em 26 arquivos, executando contra o `src` (sem build prévio).
 
 Fixtures são **diretórios de projeto reais** em `fixtures/`, não mocks:
 
@@ -570,14 +571,18 @@ máquina de quem roda os testes. Há também um teste que usa o
 
 `.github/workflows/ci.yml` roda `lint`, `typecheck`, `test` e o auto-diagnóstico
 em uma matriz `ubuntu × macos × windows` por `node 22.13.0 × 24`, com
-`pnpm install --frozen-lockfile` (que é o que prova que um clone limpo instala),
-mais um job de `pnpm audit`.
+`pnpm install --frozen-lockfile` (que é o que prova que um clone limpo instala).
 
-O workflow roda em `ubuntu × macos × windows` por `node 22.13.0 × 24`, com
-`pnpm install --frozen-lockfile`, mais um job separado de `pnpm audit`.
+Além da matriz há dois jobs:
 
-**As sete jobs passam.** 386 testes, três sistemas operacionais, duas versões
-de Node. Histórico das execuções abaixo.
+- `audit` — `pnpm audit`;
+- `extension` — constrói o VSIX e compara a lista de arquivos dentro dele com
+  uma lista exata. Um VSIX que para de construir é um release que não acontece,
+  e um arquivo a mais dentro dele é um vazamento; nenhum dos dois apareceria sem
+  alguém empacotar à mão.
+
+454 testes, três sistemas operacionais, duas versões de Node. Histórico das
+execuções abaixo.
 
 Histórico das execuções:
 
