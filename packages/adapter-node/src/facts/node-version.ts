@@ -103,6 +103,10 @@ export function unsatisfied(
   const coerced = semver.valid(version) ?? semver.coerce(version)?.version;
   if (!coerced) return [];
   return resolvedRequirements(requirements).filter(
-    (requirement) => !semver.satisfies(coerced, requirement.range, { loose: true }),
+    // `includePrerelease` so that running Node 25.0.0-rc.1 is not reported as
+    // failing `>=20`. semver excludes prereleases by default, which is right
+    // for dependency resolution and wrong for "is this runtime acceptable".
+    (requirement) =>
+      !semver.satisfies(coerced, requirement.range, { loose: true, includePrerelease: true }),
   );
 }
