@@ -1,3 +1,4 @@
+import type { ResolvedConfig } from '../config/types.js';
 import type { EnvironmentProbe } from '../env/environment.js';
 import type { WorkspaceFs } from '../fs/workspace-fs.js';
 import type { Category, FindingInput, VerificationLevel } from '../model/types.js';
@@ -6,6 +7,15 @@ import type { Category, FindingInput, VerificationLevel } from '../model/types.j
 export interface DiscoveryContext {
   readonly fs: WorkspaceFs;
   readonly environment: EnvironmentProbe;
+  /**
+   * Configuration for this run, already validated and normalised. Adapters and
+   * checks read it; none of them parses it.
+   *
+   * Severity overrides and disabled checks are applied by the engine, so an
+   * adapter only needs this for the parts that change *what it collects*:
+   * `ignore` narrows its scans, `optionalEnvVars` narrows what it reports.
+   */
+  readonly config: ResolvedConfig;
   /**
    * Aborts when the run is cancelled or the budget expires. Anything that can
    * outlive the call — a socket, a child process, a long walk — must honour it.

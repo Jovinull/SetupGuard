@@ -1,3 +1,5 @@
+import type { ConfigDiagnostic } from '../config/types.js';
+
 /**
  * Shared result model for SetupGuard.
  *
@@ -175,6 +177,15 @@ export interface AdapterReport {
   readonly error?: string;
 }
 
+/** How the run was configured, and anything wrong with that configuration. */
+export interface ConfigReport {
+  /** Workspace-relative path of the configuration file, when one was found. */
+  readonly source?: string;
+  /** False when a configuration file exists but could not be applied. */
+  readonly valid: boolean;
+  readonly diagnostics: readonly ConfigDiagnostic[];
+}
+
 /** Full diagnosis of one workspace. This is the serialized public contract. */
 export interface Report {
   readonly schemaVersion: typeof REPORT_SCHEMA_VERSION;
@@ -186,6 +197,12 @@ export interface Report {
   readonly adapters: readonly AdapterReport[];
   readonly results: readonly CheckResult[];
   readonly summary: ReportSummary;
+  /**
+   * Configuration state. A broken `.setupguard.yml` is never a project finding:
+   * it says the diagnosis that was configured did not run, which makes
+   * readiness `INCOMPLETE`.
+   */
+  readonly config: ConfigReport;
   /**
    * True when at least one check failed because of a SetupGuard bug. Readiness
    * is then `INCOMPLETE` and interfaces must say so.

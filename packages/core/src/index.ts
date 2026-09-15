@@ -16,6 +16,7 @@ export {
   type Category,
   type CheckResult,
   type CheckStatus,
+  type ConfigReport,
   type Confidence,
   type Evidence,
   type Finding,
@@ -53,6 +54,32 @@ export {
   type DiscoveryContext,
 } from './adapter/adapter.js';
 export { AdapterRegistry } from './adapter/registry.js';
+
+export {
+  DEFAULT_CONFIG,
+  type ConfigDiagnostic,
+  type ConfigDiagnosticCode,
+  type ResolvedConfig,
+  type SeverityOverride,
+} from './config/types.js';
+export { loadConfig, type LoadConfigOptions } from './config/load.js';
+export {
+  matchesIgnore,
+  normalizeIgnorePattern,
+  type IgnorePatternError,
+  type NormalizedIgnorePattern,
+} from './config/ignore.js';
+export {
+  configJsonSchema,
+  CONFIG_FILE_NAME,
+  CONFIG_VERSION,
+  CONFIG_TOP_LEVEL_KEYS,
+  CONFIG_CHECK_KEYS,
+  CONFIG_ENV_KEYS,
+  ENV_VAR_NAME_PATTERN,
+  MISNAMED_CONFIG_FILES,
+  SEVERITY_OVERRIDES,
+} from './config/schema.js';
 
 export {
   runDiagnosis,

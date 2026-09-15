@@ -1,4 +1,5 @@
 import type { AnyAdapter, CheckContext, CheckOutput, DiscoveryContext } from '../adapter/adapter.js';
+import { DEFAULT_CONFIG, type ResolvedConfig, type SeverityOverride } from '../config/types.js';
 import type { AdapterRegistry } from '../adapter/registry.js';
 import type { EnvironmentProbe } from '../env/environment.js';
 import type { WorkspaceFs } from '../fs/workspace-fs.js';
@@ -37,6 +38,12 @@ export interface RunOptions {
   readonly checkTimeoutMs?: number;
   /** Per-adapter discovery timeout. Defaults to {@link DEFAULT_ADAPTER_TIMEOUT_MS}. */
   readonly adapterTimeoutMs?: number;
+  /**
+   * Configuration, already discovered, parsed, validated and normalised.
+   * Defaults to "no configuration", which is the documented zero-config
+   * behaviour. The engine never parses YAML itself.
+   */
+  readonly config?: ResolvedConfig;
   /** Cancels the whole run. Propagated to every adapter and check. */
   readonly signal?: AbortSignal;
   /** Injectable clock, so report snapshots are reproducible in tests. */
@@ -62,6 +69,7 @@ export async function runDiagnosis(options: RunOptions): Promise<Report> {
   const checkTimeoutMs = options.checkTimeoutMs ?? DEFAULT_CHECK_TIMEOUT_MS;
   const adapterTimeoutMs = options.adapterTimeoutMs ?? DEFAULT_ADAPTER_TIMEOUT_MS;
   const allowSideEffects = options.allowSideEffects ?? false;
+  const config = options.config ?? DEFAULT_CONFIG;
 
   const adapterReports: AdapterReport[] = [];
   const results: CheckResult[] = [];
@@ -74,6 +82,7 @@ export async function runDiagnosis(options: RunOptions): Promise<Report> {
     const discoveryContext: DiscoveryContext = {
       fs: options.fs,
       environment: options.environment,
+      config,
       signal: discovery.signal,
     };
     const timeoutMessage = `Adapter "${adapter.id}" exceeded its ${adapterTimeoutMs}ms discovery budget`;
@@ -101,6 +110,7 @@ export async function runDiagnosis(options: RunOptions): Promise<Report> {
           levels,
           timeoutMs: checkTimeoutMs,
           allowSideEffects,
+          config,
         }),
       );
     }
@@ -111,8 +121,16 @@ export async function runDiagnosis(options: RunOptions): Promise<Report> {
   // sanitised here, on the way out. A check that forgets cannot leak.
   const sanitized = results.map(sanitizeResult);
 
-  const readiness = aggregateReadiness(sanitized);
-  const reason = readiness === 'INCOMPLETE' ? incompleteReason(sanitized) : undefined;
+  // A configuration that could not be applied outranks everything else: the
+  // run did not do what the repository asked for, so no verdict it produced —
+  // including BLOCKED — describes the diagnosis that was actually configured.
+  const configBroken = !config.valid;
+  const readiness = configBroken ? 'INCOMPLETE' : aggregateReadiness(sanitized);
+  const reason = configBroken
+    ? `${config.source ?? 'The configuration'} could not be applied, so the run used defaults`
+    : readiness === 'INCOMPLETE'
+      ? incompleteReason(sanitized)
+      : undefined;
 
   return {
     schemaVersion: REPORT_SCHEMA_VERSION,
@@ -123,6 +141,11 @@ export async function runDiagnosis(options: RunOptions): Promise<Report> {
     adapters: adapterReports,
     results: sanitized,
     summary: summarize(sanitized),
+    config: {
+      ...(config.source !== undefined ? { source: config.source } : {}),
+      valid: config.valid,
+      diagnostics: config.diagnostics,
+    },
     hasInternalErrors: sanitized.some((result) => result.status === 'internal-error'),
     ...(reason !== undefined ? { incompleteReason: reason } : {}),
     durationMs: Date.now() - started,
@@ -133,6 +156,7 @@ interface RunCheckPolicy {
   readonly levels: readonly VerificationLevel[];
   readonly timeoutMs: number;
   readonly allowSideEffects: boolean;
+  readonly config: ResolvedConfig;
 }
 
 async function runCheck(
@@ -158,6 +182,21 @@ async function runCheck(
     };
   }
 
+  const override = policy.config.checks.get(check.id);
+
+  if (override === 'off') {
+    // Not run at all: nothing to produce findings from, and nothing to read.
+    // The status stays `skipped`, so turning every check off honestly leaves
+    // the report with no positive evidence.
+    return {
+      ...base,
+      status: 'skipped',
+      findings: [],
+      durationMs: 0,
+      reason: `Disabled by ${policy.config.source ?? 'configuration'}`,
+    };
+  }
+
   if (check.safety === 'side-effects' && !policy.allowSideEffects) {
     return {
       ...base,
@@ -173,6 +212,7 @@ async function runCheck(
   const context: CheckContext = {
     fs: options.fs,
     environment: options.environment,
+    config: policy.config,
     signal: deadline.signal,
     levels: policy.levels,
   };
@@ -194,7 +234,7 @@ async function runCheck(
       `Check "${check.id}" exceeded its ${policy.timeoutMs}ms budget`,
     );
 
-    return normalizeOutput(base, output, Date.now() - startedAt);
+    return normalizeOutput(base, output, Date.now() - startedAt, override);
   } catch (error) {
     return {
       ...base,
@@ -212,6 +252,7 @@ function normalizeOutput(
   base: Pick<CheckResult, 'checkId' | 'title' | 'category' | 'level'>,
   output: CheckOutput,
   durationMs: number,
+  override: SeverityOverride | undefined,
 ): CheckResult {
   switch (output.kind) {
     case 'not-applicable':
@@ -219,8 +260,13 @@ function normalizeOutput(
     case 'inconclusive':
       return { ...base, status: 'inconclusive', findings: [], durationMs, reason: output.reason };
     case 'findings': {
+      // A severity override re-levels the findings a check produced. It can
+      // never touch `skipped`, `not-applicable`, `inconclusive` or
+      // `internal-error`: those describe SetupGuard, and configuration must not
+      // be able to turn a tool limitation into a statement about the project.
       const findings: Finding[] = output.findings.map((finding) => ({
         ...finding,
+        ...(override === 'error' || override === 'warning' ? { severity: override } : {}),
         checkId: base.checkId,
         evidence: finding.evidence ?? [],
       }));
