@@ -1,4 +1,4 @@
-import { describeJsonParseError, type DiscoveryContext } from '@setupguard/core';
+import { describeJsonParseError, matchesIgnore, type DiscoveryContext } from '@setupguard/core';
 
 import {
   ENV_EXAMPLE_FILES,
@@ -68,7 +68,7 @@ export interface NodeFacts {
   readonly gaps: readonly FactGap[];
 }
 
-export async function collectNodeFacts({ fs }: DiscoveryContext): Promise<NodeFacts> {
+export async function collectNodeFacts({ fs, config }: DiscoveryContext): Promise<NodeFacts> {
   const gaps: FactGap[] = [];
   const packageJson = await loadPackageJson(fs, gaps);
   const manifest = packageJson.kind === 'ok' ? packageJson.data : undefined;
@@ -88,10 +88,10 @@ export async function collectNodeFacts({ fs }: DiscoveryContext): Promise<NodeFa
 
   const nested = await findNestedProjectDirs(fs);
   gaps.push(...nested.gaps);
-  const envScan = await scanEnvUsage(fs, { excludeDirs: nested.dirs });
+  const envScan = await scanEnvUsage(fs, { excludeDirs: nested.dirs, ignore: config.ignore });
   gaps.push(...envScan.gaps);
 
-  const documents = await collectDocuments(fs, gaps);
+  const documents = await collectDocuments(fs, gaps, config.ignore);
 
   return {
     packageJson,
@@ -241,12 +241,14 @@ async function loadAllDotenv(
 async function collectDocuments(
   fs: DiscoveryContext['fs'],
   gaps: FactGap[],
+  ignore: readonly string[],
 ): Promise<DocumentFacts[]> {
   const walked = await fs.walk({
     dir: 'docs',
     extensions: ['.md', '.mdx'],
     maxDepth: 3,
     maxFiles: 50,
+    ignore,
   });
   if (walked.truncated) {
     gaps.push({
@@ -270,6 +272,9 @@ async function collectDocuments(
   for (const file of candidates) {
     const key = file.toLowerCase();
     if (seen.has(key)) continue;
+    // The root list is checked by name, so `ignore` has to be applied to it
+    // explicitly; `walk` already handled the docs/ tree.
+    if (matchesIgnore(file, ignore)) continue;
     if (!(await fs.isFile(file))) continue;
     seen.add(key);
     try {

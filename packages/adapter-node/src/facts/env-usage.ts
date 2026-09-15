@@ -92,6 +92,8 @@ export interface ScanEnvUsageOptions {
    * Used to stay inside the project being diagnosed.
    */
   readonly excludeDirs?: readonly string[];
+  /** Normalised `.setupguard.yml` ignore patterns. */
+  readonly ignore?: readonly string[];
 }
 
 export interface EnvScanResult {
@@ -119,6 +121,7 @@ export async function scanEnvUsage(
   const walked = await fs.walk({
     extensions: SOURCE_EXTENSIONS,
     maxFiles: options.maxFiles ?? 2000,
+    ...(options.ignore ? { ignore: options.ignore } : {}),
   });
 
   const excludeDirs = options.excludeDirs ?? [];
