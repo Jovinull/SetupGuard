@@ -34,7 +34,7 @@ import { WATCH_GLOBS, shouldTriggerRun } from './watch-patterns.js';
  * dispose of them.
  *
  * Activating this extension runs no project code. See
- * `Notes/16-extensao-vscode.md`.
+ * `Notes/16-extensao-vscode-implementada.md`.
  */
 
 const RUN_COMMAND = 'setupguard.runDiagnosis';
@@ -146,9 +146,17 @@ class SetupGuardExtension implements vscode.Disposable {
   /** Rebuild every VS Code surface from the sessions' current state. */
   #render(): void {
     if (this.#disposed) return;
-    this.#publishDiagnostics();
-    this.#updateStatusBar();
-    this.#reportProvider.update(this.#renderReport());
+    try {
+      this.#publishDiagnostics();
+      this.#updateStatusBar();
+      this.#reportProvider.update(this.#renderReport());
+    } catch (error) {
+      // This runs inside the session's state callback, so an exception would
+      // escape as an unhandled rejection and leave the editor showing whatever
+      // it happened to be showing, with nothing said about why. Redacted like
+      // every other message, because it can quote a path.
+      this.#log(`Could not update the editor: ${describeError(error)}`);
+    }
   }
 
   /**
