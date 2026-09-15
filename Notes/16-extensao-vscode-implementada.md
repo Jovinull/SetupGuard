@@ -274,7 +274,7 @@ Ambas com teste de regressão em `packages/core/test/config.test.ts`.
 
 ## Testes
 
-454 testes em 26 arquivos. O pacote da extensão contribui com 70:
+458 testes em 27 arquivos. O pacote da extensão contribui com 74:
 
 | arquivo | o que cobre |
 |---|---|
@@ -285,9 +285,24 @@ Ambas com teste de regressão em `packages/core/test/config.test.ts`.
 | `manifest.test.ts` (13) | manifesto ↔ código, activation, trust, `.vscodeignore`, sem publicação |
 | `diagnostics.test.ts` (5) | projeção de findings (pré-existente) |
 | `config-diagnostics.test.ts` (5) | problemas de configuração, separados dos do projeto |
+| `bundle.test.ts` (4) | o artefato empacotado carrega, ativa e não requer módulo perigoso |
+
+`bundle.test.ts` é o único que carrega `out/extension.cjs`. Ele se pula quando
+não existe bundle — o que é o caso nos jobs da matriz — e roda no job que
+empacota. O módulo `vscode` é substituído pelo menor objeto que permite a
+ativação terminar.
+
+Esse substituto **não** representa o editor e não prova nada sobre renderização.
+O que ele prova é mais estreito e vale ter: o bundle carrega como CommonJS, a
+ativação e o descarte não lançam, um diagnóstico real de uma fixture percorre o
+caminho inteiro, e nada nesse caminho requer `child_process`, `http`, `https`,
+`net`, `tls`, `dgram`, `worker_threads`, `vm`, `cluster`, `http2` ou `inspector`
+— a verificação de "não executa processo, não abre socket" feita sobre o
+artefato distribuído, não sobre as fontes.
 
 O que **não** é testado automaticamente: o comportamento real dentro do
-Extension Host. Isso é verificado instalando o `.vsix`.
+Extension Host — renderização, atalhos, navegação a partir do painel Problems,
+integração com Workspace Trust. Isso é verificado instalando o `.vsix`.
 
 ## Limitações conhecidas
 

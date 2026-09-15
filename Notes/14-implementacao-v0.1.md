@@ -498,7 +498,9 @@ lista de watchers são puros e testados em Node.
 
 ## Testes
 
-Vitest, 454 testes em 26 arquivos, executando contra o `src` (sem build prévio).
+Vitest, 458 testes em 27 arquivos, executando contra o `src` (sem build prévio).
+O único que não roda contra o `src` é `packages/vscode/test/bundle.test.ts`, que
+carrega o bundle da extensão e se pula quando ele não existe.
 
 Fixtures são **diretórios de projeto reais** em `fixtures/`, não mocks:
 
@@ -576,12 +578,13 @@ em uma matriz `ubuntu × macos × windows` por `node 22.13.0 × 24`, com
 Além da matriz há dois jobs:
 
 - `audit` — `pnpm audit`;
-- `extension` — constrói o VSIX e compara a lista de arquivos dentro dele com
-  uma lista exata. Um VSIX que para de construir é um release que não acontece,
-  e um arquivo a mais dentro dele é um vazamento; nenhum dos dois apareceria sem
-  alguém empacotar à mão.
+- `extension` — constrói o VSIX, carrega e ativa o bundle
+  (`packages/vscode/test/bundle.test.ts`) e compara a lista de arquivos dentro
+  do pacote com uma lista exata. Um VSIX que para de construir é um release que
+  não acontece, e um arquivo a mais dentro dele é um vazamento; nenhum dos dois
+  apareceria sem alguém empacotar à mão.
 
-454 testes, três sistemas operacionais, duas versões de Node. Histórico das
+458 testes, três sistemas operacionais, duas versões de Node. Histórico das
 execuções abaixo.
 
 Histórico das execuções:
