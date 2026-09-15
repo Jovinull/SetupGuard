@@ -603,11 +603,16 @@ uma declaração que contribuidores usam — exatamente o drift que esta ferrame
 existe para pegar. O passo de auto-diagnóstico foi restrito ao runtime
 recomendado em vez disso.
 
-Duas ressalvas que a matriz verde não remove:
+Uma ressalva que a matriz verde não remove:
 
 - os testes de symlink se pulam no Windows (criar link exige elevação), então
-  essa fronteira segue não verificada lá;
-- o auto-diagnóstico só roda na perna de Node 24.
+  essa fronteira segue não verificada lá.
+
+O auto-diagnóstico estático roda em todas as pernas, inclusive no piso Node
+22.13, provando que o binário compilado inicia e analisa o repositório em todo
+runtime suportado. O auto-diagnóstico completo, que inclui o ambiente do runner,
+roda apenas com Node 24: na perna 22.13 ele apontaria corretamente o conflito
+com o runtime recomendado por `.nvmrc`.
 
 ## Limitações conhecidas
 
@@ -647,4 +652,5 @@ Duas ressalvas que a matriz verde não remove:
 - Identificadores de check não são sanitizados; isso precisa mudar antes de
   aceitar adapters de terceiros.
 - As camadas de `.env` são uma heurística de framework, não um contrato do Node.
-- O auto-diagnóstico do CI só roda na perna de Node 24 (ver integração contínua).
+- O auto-diagnóstico estático roda em toda a matriz; o completo roda apenas com
+  Node 24, que corresponde ao `.nvmrc` (ver integração contínua).

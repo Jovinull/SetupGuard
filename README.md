@@ -107,14 +107,17 @@ Ubuntu, macOS and Windows, against the lowest Node this project supports
 Status, as of commit `7b52b63`: **all seven jobs pass** — 252 tests on three
 operating systems and two Node versions.
 
-Two things a green matrix still does not prove:
+One thing a green matrix still does not prove:
 
 - the symlink-confinement tests skip themselves on Windows, where creating a
-  link needs elevation, so that boundary stays unverified there;
-- the self-diagnosis step runs only on Node 24, the version `.nvmrc`
-  recommends. On 22.13 SetupGuard correctly reports that the runner is not on
-  the recommended runtime — a true finding about the runner, not a defect in
-  the repository.
+  link needs elevation, so that boundary stays unverified there.
+
+The built CLI runs a static self-diagnosis on every matrix leg, proving that it
+starts on the minimum supported runtime. The full diagnosis, which also checks
+the runner environment, runs on Node 24 — the version `.nvmrc` recommends. On
+22.13 the environment check correctly reports that the runner is not on the
+recommended runtime, so treating that full diagnosis as an expected pass would
+hide a true finding.
 
 Node 20 is deliberately not supported: it reached end of life on 2026-04-30,
 and shipping support for a runtime without security patches would contradict
