@@ -67,6 +67,7 @@ Tomadas durante a implementação da fundação em 2026-09-14. Cada uma está de
 - **Testes:** Vitest, fixtures como diretórios de projeto reais versionados.
 - **Registro de adapters:** explícito; sem descoberta de plugins em disco.
 - **Licença:** MIT.
+- **Configuração:** `.setupguard.yml` com `version`, `checks`, `env.optional` e `ignore`; uma fase única de discover/parse/validate/normalize no core; biblioteca `yaml` (zero dependências transitivas); TypeScript como fonte de verdade do JSON Schema; configuração inválida produz `INCOMPLETE` com precedência total. Detalhes em [15-configuracao.md](15-configuracao.md).
 
 ### Detecção
 
@@ -92,7 +93,7 @@ Tomadas durante a implementação da fundação em 2026-09-14. Cada uma está de
 - matriz exata de arquivos, ferramentas e frameworks do MVP;
 - quais Quick Fixes, se houver, entram depois;
 - métricas de sucesso;
-- política de supressão e tratamento de falsos positivos (depende de `.setupguard.yml`).
+- supressão por achado individual ou por linha (o grão hoje é o check).
 
 ## Em aberto — arquitetura e implementação
 
@@ -104,7 +105,7 @@ Tomadas durante a implementação da fundação em 2026-09-14. Cada uma está de
 - compatibilidade entre sistemas operacionais: **verificada** no commit `7b52b63` — Ubuntu, macOS e Windows, Node 22.13 e 24, sete jobs verdes. Continua em aberto apenas a fronteira de symlink no Windows, cujos testes se pulam lá por exigirem elevação;
 - cancelamento não cooperativo (um laço síncrono que ignore o `AbortSignal` não é interrompido);
 - redaction é baseada em forma: um segredo sem `=`, sem URL e sem prefixo de token passa;
-- biblioteca de schema/configuração, quando existir `.setupguard.yml`.
+- namespace de configuração por adapter, necessário no primeiro segundo ecossistema.
 
 ## Em aberto — detecção e configuração
 
@@ -114,7 +115,7 @@ Tomadas durante a implementação da fundação em 2026-09-14. Cada uma está de
 - verificação da **versão** do gerenciador de pacotes declarada em `packageManager` (hoje só a presença no `PATH`);
 - distinção formal entre variáveis `REQUIRED`, `OPTIONAL`, `INFERRED` e `UNKNOWN`;
 - drift de documentação além de scripts (arquivos, caminhos, portas);
-- schema completo de `.setupguard.yml`;
+- `extends`, presets e herança de `.setupguard.yml`;
 - herança/configuração por monorepo;
 - readiness global versus por workspace;
 - ordem e resolução de conflito entre adapters, quando houver mais de um.

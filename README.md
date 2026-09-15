@@ -40,7 +40,7 @@ Results aggregate into four states:
 | State | Exit | Meaning |
 | --- | --- | --- |
 | `BLOCKED` | 1 | someone following the repository's own instructions is stuck |
-| `INCOMPLETE` | 3 | the diagnosis is **partial**: something could not be checked, or nothing was checked at all. Not a pass, and not a failure of the project |
+| `INCOMPLETE` | 3 | the diagnosis is **partial**: something could not be checked, nothing was checked at all, or `.setupguard.yml` could not be applied. Not a pass, and not a failure of the project |
 | `WARNINGS` | 0 | the contract is degraded but the project can still run |
 | `READY` | 0 | every check that applied reached a conclusion, and none of them found anything |
 
@@ -53,6 +53,35 @@ the diagnosis did not happen.
 that concluded, and no check that gave up or crashed. An empty directory, a
 mistyped path, an unsupported ecosystem, an unreadable `.nvmrc` or a level with
 no checks all exit 3, not 0.
+
+## Configuration
+
+Optional. Without `.setupguard.yml` nothing changes — zero-config is the
+default, and the file exists only so a project can declare an exception it has
+already thought about.
+
+```yaml
+version: 1
+
+checks:
+  node/docs-script-drift:
+    severity: warning   # error | warning | off
+
+env:
+  optional:
+    - SENTRY_DSN        # exact names; never a pattern, never a value
+
+ignore:
+  - docs/generated/**   # narrows the source and documentation scans only
+```
+
+An unknown check id, an invalid severity or a pattern that escapes the
+workspace is a configuration error, not something quietly ignored: the run then
+reports `INCOMPLETE` rather than a verdict it was not asked for.
+
+Full reference, including where `ignore` applies and where it deliberately does
+not: [Notes/15-configuracao.md](Notes/15-configuracao.md). Machine-readable
+schema: [`schemas/setupguard.schema.json`](schemas/setupguard.schema.json).
 
 ## What it will not do
 
@@ -72,10 +101,11 @@ no checks all exit 3, not 0.
 
 ```text
 packages/
-  core/          engine: model, adapter/check contracts, pipeline, report schema
+  core/          engine: model, adapter/check contracts, config, pipeline, report schema
   adapter-node/  Node.js/TypeScript ecosystem: facts and checks
   cli/           `setupguard` command
   vscode/        report -> editor diagnostics projection (no extension host yet)
+schemas/         generated JSON Schema for .setupguard.yml
 fixtures/        real project directories used by the tests
 testing/         shared test helpers
 Notes/           product specification and decision log

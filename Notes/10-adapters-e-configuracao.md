@@ -102,7 +102,9 @@ Configuração explícita é proposta para projetos complexos. Possíveis necess
 
 Essas capacidades não são schema aprovado. Nome final, formato, campos, herança e validação estão **Em aberto**.
 
-**Estado em v0.1**: `.setupguard.yml` não existe. Não há como suprimir um achado nem marcar uma variável como opcional. Os únicos controles são `--level` e `--fail-on` na CLI. Essa é a limitação mais sentida hoje e a principal candidata ao próximo marco.
+**Implementado**: `.setupguard.yml` existe, com `version`, `checks.<id>.severity`, `env.optional` e `ignore`. A referência completa — schema, precedência, onde `ignore` se aplica, tratamento de arquivo inválido e limitações — está em [15-configuracao.md](15-configuracao.md).
+
+Continuam **Em aberto**: herança, `extends`, presets, configuração por workspace de monorepo, namespace por adapter e supressão por achado individual.
 
 ## Monorepos
 

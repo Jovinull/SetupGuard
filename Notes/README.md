@@ -27,6 +27,7 @@ Slogans propostos no material de origem:
 12. [Distribuição, crescimento e custos](12-distribuicao-e-custos.md)
 13. [Decisões e questões em aberto](13-decisoes-e-questoes-em-aberto.md)
 14. [Implementação v0.1 — fundação](14-implementacao-v0.1.md)
+15. [Configuração — `.setupguard.yml`](15-configuracao.md)
 
 ## Princípios que devem orientar qualquer implementação
 
