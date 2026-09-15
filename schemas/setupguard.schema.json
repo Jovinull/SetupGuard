@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://setupguard.dev/schemas/setupguard.schema.json",
+  "title": "SetupGuard configuration",
+  "description": "Optional configuration for a repository diagnosed by SetupGuard. Its purpose is to let a project declare legitimate exceptions, not to define policy.",
+  "type": "object",
+  "required": [
+    "version"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "description": "Configuration format version. Only 1 is supported.",
+      "const": 1
+    },
+    "checks": {
+      "description": "Severity overrides, keyed by check id.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "severity": {
+            "description": "error and warning re-level every finding the check produces; off stops the check from running.",
+            "enum": [
+              "error",
+              "warning",
+              "off"
+            ]
+          }
+        }
+      }
+    },
+    "env": {
+      "description": "Environment-variable contract exceptions.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "optional": {
+          "description": "Variables the project works without. Names only; SetupGuard never reads a value.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+          }
+        }
+      }
+    },
+    "ignore": {
+      "description": "Workspace-relative glob patterns excluded from the source and documentation scans. Structural files such as the root package.json are never hidden.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

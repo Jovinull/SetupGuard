@@ -44,7 +44,13 @@ export default tseslint.config(
     },
   },
   {
-    files: ['eslint.config.js', 'vitest.config.ts'],
+    // Plain scripts that are not part of any tsconfig project, so the
+    // type-aware rules have nothing to read.
+    files: ['eslint.config.js', 'vitest.config.ts', 'scripts/**/*.mjs'],
     extends: [tseslint.configs.disableTypeChecked],
+    languageOptions: {
+      parserOptions: { project: null },
+      globals: { process: 'readonly', URL: 'readonly', console: 'readonly' },
+    },
   },
 );
