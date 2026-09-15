@@ -34,3 +34,5 @@ export {
   type StatusBarState,
   type StatusInput,
 } from './status.js';
+
+export { renderReport, renderReports, type RenderReportOptions } from './report-view.js';
