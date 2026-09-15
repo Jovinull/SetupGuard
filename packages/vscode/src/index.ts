@@ -38,3 +38,11 @@ export {
 } from './status.js';
 
 export { renderReport, renderReports, type RenderReportOptions } from './report-view.js';
+
+export {
+  shouldTriggerRun,
+  DOCUMENT_GLOBS,
+  SOURCE_GLOBS,
+  STRUCTURAL_FILES,
+  WATCH_GLOBS,
+} from './watch-patterns.js';
