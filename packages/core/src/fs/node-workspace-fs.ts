@@ -2,6 +2,7 @@ import { promises as fs, type Dirent } from 'node:fs';
 import type { FileHandle } from 'node:fs/promises';
 import path from 'node:path';
 
+import { matchesIgnore } from '../config/ignore.js';
 import {
   DEFAULT_IGNORED_DIRS,
   FileTooLargeError,
@@ -186,6 +187,7 @@ export class NodeWorkspaceFs implements WorkspaceFs {
     const ignored = new Set([...DEFAULT_IGNORED_DIRS, ...(options.ignoreDirs ?? [])]);
     const extensions = options.extensions;
     const names = options.names;
+    const ignore = options.ignore ?? [];
 
     const files: string[] = [];
     let truncated = false;
@@ -228,6 +230,7 @@ export class NodeWorkspaceFs implements WorkspaceFs {
 
         if (entry.isDirectory()) {
           if (ignored.has(entry.name)) continue;
+          if (matchesIgnore(childRelative, ignore)) continue;
           await visit(childRelative, depth + 1);
           continue;
         }
@@ -237,6 +240,7 @@ export class NodeWorkspaceFs implements WorkspaceFs {
         if (!entry.isFile()) continue;
         if (names && !names.includes(entry.name)) continue;
         if (extensions && !extensions.some((ext) => entry.name.endsWith(ext))) continue;
+        if (matchesIgnore(childRelative, ignore)) continue;
         files.push(childRelative);
       }
     };

@@ -19,6 +19,15 @@ export interface WalkOptions {
   readonly maxFiles?: number;
   /** Directory names to skip, in addition to the built-in defaults. */
   readonly ignoreDirs?: readonly string[];
+  /**
+   * Normalised ignore patterns from `.setupguard.yml`.
+   *
+   * Passed explicitly by the scans it applies to rather than baked into the
+   * filesystem layer: configuration must never be able to hide a structural
+   * file such as the root manifest, and an opt-in parameter makes every place
+   * it does apply visible at the call site.
+   */
+  readonly ignore?: readonly string[];
 }
 
 /** Directory names never traversed: they hold generated or vendored content. */
