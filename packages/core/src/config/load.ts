@@ -184,6 +184,7 @@ function validate(
 ): ResolvedConfig {
   const diagnostics: ConfigDiagnostic[] = [];
   const at = (path: readonly (string | number)[]) => locate(doc, text, path);
+  const atKey = (path: readonly (string | number)[]) => locateKey(doc, text, path);
 
   if (raw === null || raw === undefined) {
     return invalid([
@@ -203,7 +204,7 @@ function validate(
     if (!CONFIG_TOP_LEVEL_KEYS.includes(key)) {
       diagnostics.push(
         diagnostic('config/unknown-key', `Unknown configuration key "${redact(key)}"`, {
-          ...at([key]),
+          ...atKey([key]),
           path: key,
           remediation: `Known keys: ${CONFIG_TOP_LEVEL_KEYS.join(', ')}.`,
         }),
@@ -234,8 +235,8 @@ function validate(
     );
   }
 
-  const checks = readChecks(raw['checks'], knownCheckIds, at, diagnostics);
-  const optionalEnvVars = readEnv(raw['env'], at, diagnostics);
+  const checks = readChecks(raw['checks'], knownCheckIds, at, atKey, diagnostics);
+  const optionalEnvVars = readEnv(raw['env'], at, atKey, diagnostics);
   const ignore = readIgnore(raw['ignore'], at, diagnostics);
 
   if (diagnostics.length > 0) return invalid(diagnostics);
@@ -256,6 +257,7 @@ function readChecks(
   value: unknown,
   knownCheckIds: readonly string[],
   at: Locator,
+  atKey: Locator,
   diagnostics: ConfigDiagnostic[],
 ): ReadonlyMap<string, SeverityOverride> {
   const result = new Map<string, SeverityOverride>();
@@ -275,7 +277,7 @@ function readChecks(
     if (!knownCheckIds.includes(id)) {
       diagnostics.push(
         diagnostic('config/unknown-check', `Unknown check id "${redact(id)}"`, {
-          ...at(['checks', id]),
+          ...atKey(['checks', id]),
           path: `checks.${id}`,
           remediation: `Known checks: ${knownCheckIds.join(', ')}.`,
         }),
@@ -298,7 +300,7 @@ function readChecks(
       if (!CONFIG_CHECK_KEYS.includes(key)) {
         diagnostics.push(
           diagnostic('config/unknown-key', `Unknown setting "${redact(key)}" for check "${redact(id)}"`, {
-            ...at(['checks', id, key]),
+            ...atKey(['checks', id, key]),
             path: `checks.${id}.${key}`,
             remediation: `Known settings: ${CONFIG_CHECK_KEYS.join(', ')}.`,
           }),
@@ -326,7 +328,7 @@ function readChecks(
   return result;
 }
 
-function readEnv(value: unknown, at: Locator, diagnostics: ConfigDiagnostic[]): ReadonlySet<string> {
+function readEnv(value: unknown, at: Locator, atKey: Locator, diagnostics: ConfigDiagnostic[]): ReadonlySet<string> {
   const result = new Set<string>();
   if (value === undefined) return result;
 
@@ -341,7 +343,7 @@ function readEnv(value: unknown, at: Locator, diagnostics: ConfigDiagnostic[]): 
     if (!CONFIG_ENV_KEYS.includes(key)) {
       diagnostics.push(
         diagnostic('config/unknown-key', `Unknown key "${redact(key)}" under "env"`, {
-          ...at(['env', key]),
+          ...atKey(['env', key]),
           path: `env.${key}`,
           remediation: `Known keys: ${CONFIG_ENV_KEYS.join(', ')}.`,
         }),
@@ -479,11 +481,60 @@ function locate(
 ): Partial<ConfigDiagnostic> {
   try {
     const node: unknown = path.length === 0 ? doc.contents : doc.getIn(path, true);
-    const range = (node as { range?: [number, number, number] } | null)?.range;
-    return positionFromOffset(text, range?.[0]);
+    return positionFromOffset(text, rangeOf(node)?.[0]);
   } catch {
     return {};
   }
+}
+
+/**
+ * Position of a key rather than of the value it holds.
+ *
+ * `getIn` resolves to the value node, which for `cheks:\n  a: b` is the nested
+ * mapping on the next line. When the key is what is wrong, an editor has to
+ * underline the key, so the pair is looked up in its parent collection.
+ */
+function locateKey(
+  doc: Document,
+  text: string,
+  path: readonly (string | number)[],
+): Partial<ConfigDiagnostic> {
+  try {
+    const name = path[path.length - 1];
+    const parentPath = path.slice(0, -1);
+    const parent: unknown = parentPath.length === 0 ? doc.contents : doc.getIn(parentPath, true);
+    const items = (parent as { items?: unknown[] } | null)?.items;
+
+    if (name !== undefined && Array.isArray(items)) {
+      const wanted = String(name);
+      for (const item of items) {
+        const key = (item as { key?: unknown } | null)?.key;
+        // Compared as text because a YAML key is scalar and a path segment is
+        // a string: `1:` parses to the number 1 and must still match "1".
+        if (scalarText(key) === wanted) {
+          const offset = rangeOf(key)?.[0];
+          if (offset !== undefined) return positionFromOffset(text, offset);
+        }
+      }
+    }
+  } catch {
+    return {};
+  }
+  // A key that cannot be found in the tree still deserves the best position
+  // available, which is the one its value carries.
+  return locate(doc, text, path);
+}
+
+function rangeOf(node: unknown): [number, number, number] | undefined {
+  return (node as { range?: [number, number, number] } | null)?.range;
+}
+
+/** Text of a YAML scalar node, or undefined for anything else. */
+function scalarText(node: unknown): string | undefined {
+  const value = (node as { value?: unknown } | null)?.value;
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  return undefined;
 }
 
 function positionFromOffset(text: string, offset: number | undefined): Partial<ConfigDiagnostic> {

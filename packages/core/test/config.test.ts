@@ -274,6 +274,27 @@ describe('invalid configuration', () => {
     expect(diagnostic?.column).toBeGreaterThan(0);
   });
 
+  it('points at the key when the key is what is wrong', async () => {
+    // `getIn` resolves a path to the value node, so an unknown key used to be
+    // reported at the line of whatever it contained. An editor underlines the
+    // position it is given, so the position has to be the key.
+    const config = await withConfig('version: 1\ncheks:\n  a: b\n');
+    const diagnostic = config.diagnostics[0];
+
+    expect(diagnostic?.code).toBe('config/unknown-key');
+    expect(diagnostic).toMatchObject({ line: 2, column: 1 });
+  });
+
+  it('points at the key for an unknown check id and an unknown setting', async () => {
+    const unknownId = await withConfig('version: 1\nchecks:\n  node/nope:\n    severity: off\n');
+    expect(unknownId.diagnostics[0]).toMatchObject({ code: 'config/unknown-check', line: 3, column: 3 });
+
+    const unknownSetting = await withConfig(
+      'version: 1\nchecks:\n  node/package-json:\n    level: off\n',
+    );
+    expect(unknownSetting.diagnostics[0]).toMatchObject({ code: 'config/unknown-key', line: 4, column: 5 });
+  });
+
   it('names the known check ids so a typo is easy to fix', async () => {
     const config = await withConfig('version: 1\nchecks:\n  node/docs-drift:\n    severity: off\n');
 
