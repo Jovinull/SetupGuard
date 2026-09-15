@@ -82,9 +82,31 @@ describe('parseScriptReferences', () => {
     ]);
   });
 
-  it('skips flags and flag values', () => {
-    expect(parseScriptReferences('pnpm --filter web run build')[0]).toMatchObject({ script: 'build' });
+  it('skips ordinary flags and their values', () => {
     expect(parseScriptReferences('npm run --silent test')[0]).toMatchObject({ script: 'test' });
+    expect(parseScriptReferences('pnpm run build --if-present')[0]).toMatchObject({
+      script: 'build',
+    });
+  });
+
+  it('drops references aimed at another workspace instead of guessing', () => {
+    // The script belongs to a different manifest, so resolving it against this
+    // package.json would produce a confident, blocking, wrong finding.
+    for (const command of [
+      'npm --prefix ./sub run build',
+      'npm -C ./sub run build',
+      'npm run build --workspace=api',
+      'npm run build -w api',
+      'pnpm --filter web run build',
+      'pnpm --filter ./packages/* run build',
+      'pnpm -F web build',
+      'pnpm -C packages/api run build',
+      'pnpm -r build',
+      'pnpm --recursive run build',
+      'yarn workspace api build',
+    ]) {
+      expect(parseScriptReferences(command), command).toEqual([]);
+    }
   });
 
   it('ignores placeholders and non-package-manager commands', () => {
