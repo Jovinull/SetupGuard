@@ -1,8 +1,13 @@
+import { createRequire } from 'node:module';
+
 /**
- * Version reported by `setupguard --version`.
+ * Version reported by `setupguard --version`, read from the package manifest.
  *
- * Kept as a literal rather than read from package.json: the built `dist/` is
- * two directories away from the manifest, and a wrong relative path would only
- * fail at run time.
+ * Both `src/` and `dist/` sit one level under the package root, so the same
+ * relative path works whether this module runs from source (tests) or from the
+ * build (the published bin). Hard-coding the string here instead meant two
+ * places to bump and one of them would eventually be wrong.
  */
-export const CLI_VERSION = '0.1.0';
+const manifest = createRequire(import.meta.url)('../package.json') as { version: string };
+
+export const CLI_VERSION: string = manifest.version;
