@@ -371,12 +371,12 @@ describe('redaction', () => {
                 code: 'demo/leak',
                 severity: 'error',
                 confidence: 'high',
-                message: 'README says TOKEN=sg-live-SECRET-9127 npm run deploy',
+                message: 'README says TOKEN=QA-FAKE-CREDENTIAL-0004 npm run deploy',
                 explanation: 'connect with postgres://admin:hunter2@db.internal/app',
                 expected: 'API_KEY=expected-secret-value',
                 actual: 'Bearer abcdefghijklmnop0123',
                 remediation: 'set PASSWORD=another-secret',
-                evidence: [{ file: 'README.md', excerpt: 'TOKEN=sg-live-SECRET-9127' }],
+                evidence: [{ file: 'README.md', excerpt: 'TOKEN=QA-FAKE-CREDENTIAL-0004' }],
               },
             ]),
         }),
@@ -385,7 +385,7 @@ describe('redaction', () => {
 
     const serialized = JSON.stringify(report);
     for (const secret of [
-      'sg-live-SECRET-9127',
+      'QA-FAKE-CREDENTIAL-0004',
       'hunter2',
       'expected-secret-value',
       'abcdefghijklmnop0123',
@@ -439,7 +439,7 @@ describe('redaction', () => {
                 confidence: 'medium',
                 message: 'a file was found',
                 evidence: [
-                  { file: 'TOKEN=sg-file-SECRET-7788.js' },
+                  { file: 'TOKEN=QA-FAKE-CREDENTIAL-0006.js' },
                   { file: 'src/deep/API_KEY=nested-SECRET.ts', line: 3 },
                 ],
               },
@@ -449,7 +449,7 @@ describe('redaction', () => {
     );
 
     const serialized = JSON.stringify(report);
-    expect(serialized).not.toContain('sg-file-SECRET-7788');
+    expect(serialized).not.toContain('QA-FAKE-CREDENTIAL-0006');
     // The nested case is the one a naive redactor misses: the assignment
     // lookbehind excludes `/`, so the path must be split before redacting.
     expect(serialized).not.toContain('nested-SECRET');
