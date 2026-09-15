@@ -1,7 +1,13 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { DiscoveryContext, EnvironmentProbe, WorkspaceFs } from '@setupguard/core';
+import {
+  DEFAULT_CONFIG,
+  type DiscoveryContext,
+  type EnvironmentProbe,
+  type ResolvedConfig,
+  type WorkspaceFs,
+} from '@setupguard/core';
 
 /**
  * Shared test support.
@@ -52,11 +58,16 @@ export function stubEnvironment(options: StubEnvironmentOptions = {}): Environme
  */
 export function discoveryContext(
   fs: WorkspaceFs,
-  options: { environment?: EnvironmentProbe; signal?: AbortSignal } = {},
+  options: {
+    environment?: EnvironmentProbe;
+    signal?: AbortSignal;
+    config?: ResolvedConfig;
+  } = {},
 ): DiscoveryContext {
   return {
     fs,
     environment: options.environment ?? stubEnvironment(),
+    config: options.config ?? DEFAULT_CONFIG,
     signal: options.signal ?? new AbortController().signal,
   };
 }
