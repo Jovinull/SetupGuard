@@ -255,8 +255,8 @@ describe('secret handling', () => {
     const report = await diagnose('secret-env');
     const serialized = reportToJson(report);
 
-    expect(serialized).not.toContain('sg-live-9f3ac71d-DO-NOT-LEAK');
-    expect(serialized).not.toContain('sk_test_INLINE_FALLBACK_SECRET');
+    expect(serialized).not.toContain('QA-FAKE-CREDENTIAL-0003');
+    expect(serialized).not.toContain('QA-FAKE-CREDENTIAL-0002');
     // The variable names themselves are still reported, which is the point.
     expect(serialized).toContain('STRIPE_SECRET_KEY');
   });

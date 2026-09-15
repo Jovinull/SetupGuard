@@ -4,7 +4,12 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { maskComments, nodeAdapter } from '@setupguard/adapter-node';
+import {
+  destructuredNames,
+  isAmbientEnvVar,
+  maskComments,
+  nodeAdapter,
+} from '@setupguard/adapter-node';
 import {
   AdapterRegistry,
   NodeWorkspaceFs,
@@ -142,6 +147,87 @@ describe('source inference', () => {
     });
 
     expect(codes(await diagnose(root))).toContain('node/env-var-undocumented');
+  });
+});
+
+describe('destructured reads', () => {
+  it('detects names bound by destructuring process.env', async () => {
+    const root = await workspace({
+      ...BASE,
+      '.env.example': '',
+      'src/a.js': 'const { DESTRUCTURED_ONE, RENAMED: alias } = process.env;\nexport default alias;\n',
+    });
+
+    // The single most common way to read configuration, and previously invisible
+    // to the scanner: the check passed clean while nothing was documented.
+    const found = codes(await diagnose(root));
+    expect(found.filter((c) => c === 'node/env-var-undocumented')).toHaveLength(2);
+  });
+
+  it('detects a destructuring spread over several lines', async () => {
+    const root = await workspace({
+      ...BASE,
+      '.env.example': '',
+      'src/a.js': ['const {', '  MULTILINE_A,', '  MULTILINE_B = "x",', '} = process.env;'].join('\n'),
+    });
+
+    expect(codes(await diagnose(root)).filter((c) => c === 'node/env-var-undocumented')).toHaveLength(
+      2,
+    );
+  });
+
+  it('does not fire on destructuring of an unrelated object', async () => {
+    const root = await workspace({
+      ...BASE,
+      '.env.example': '',
+      'src/a.js': 'const { NOT_AN_ENV_VAR } = someConfigObject;\nexport default NOT_AN_ENV_VAR;\n',
+    });
+
+    expect(codes(await diagnose(root))).toEqual([]);
+  });
+
+  it('keeps the binding parser conservative', () => {
+    expect(destructuredNames('A, B: alias, C = "x"')).toEqual(['A', 'B', 'C']);
+    // Rest elements, nested patterns and computed keys are skipped, not guessed.
+    expect(destructuredNames('...rest')).toEqual([]);
+    expect(destructuredNames('[computed]: x')).toEqual([]);
+  });
+});
+
+describe('ambient variables', () => {
+  it('never asks the project to document what the platform provides', async () => {
+    const root = await workspace({
+      ...BASE,
+      '.env.example': '',
+      'src/a.js': [
+        'export const mode = import.meta.env.MODE;',
+        'export const dev = import.meta.env.DEV;',
+        'export const version = process.env.npm_package_version;',
+        'export const cfg = process.env.npm_config_registry;',
+        'export const nodeEnv = process.env.NODE_ENV;',
+      ].join('\n'),
+    });
+
+    expect(codes(await diagnose(root))).toEqual([]);
+  });
+
+  it('still asks for a project variable read through import.meta.env', async () => {
+    const root = await workspace({
+      ...BASE,
+      '.env.example': '',
+      'src/a.js': 'export const url = import.meta.env.VITE_API_URL;\n',
+    });
+
+    expect(codes(await diagnose(root))).toContain('node/env-var-undocumented');
+  });
+
+  it('treats ambience as a property of the access form, not the name', () => {
+    // MODE is a Vite builtin only through import.meta.env. Read from
+    // process.env it is an ordinary variable the project has to declare.
+    expect(isAmbientEnvVar('MODE', 'import.meta.env')).toBe(true);
+    expect(isAmbientEnvVar('MODE', 'process.env')).toBe(false);
+    expect(isAmbientEnvVar('npm_package_version', 'process.env')).toBe(true);
+    expect(isAmbientEnvVar('VITE_API_URL', 'import.meta.env')).toBe(false);
   });
 });
 

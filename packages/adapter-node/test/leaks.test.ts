@@ -46,14 +46,14 @@ describe('secrets never reach the report', () => {
     const root = await workspace({
       'package.json': JSON.stringify({ name: 'x', scripts: { build: 'tsc' } }),
       'package-lock.json': '{"lockfileVersion":3}',
-      'README.md': ['# x', '', '```bash', 'TOKEN=sg-doc-SECRET-9127 npm run missing', '```'].join(
+      'README.md': ['# x', '', '```bash', 'TOKEN=QA-FAKE-CREDENTIAL-0005 npm run missing', '```'].join(
         '\n',
       ),
     });
 
     const serialized = await diagnose(root);
 
-    expect(serialized).not.toContain('sg-doc-SECRET-9127');
+    expect(serialized).not.toContain('QA-FAKE-CREDENTIAL-0005');
     // The finding itself is still produced and still actionable.
     expect(serialized).toContain('node/docs-script-not-found');
     expect(serialized).toContain('missing');
@@ -63,13 +63,13 @@ describe('secrets never reach the report', () => {
     const root = await workspace({
       // Malformed on purpose, and starting with a credential: the native
       // JSON.parse message quotes the first characters of the input.
-      'package.json': 'sk_live_DEADBEEF_SECRET_TOKEN\n{ "name": "x" }',
+      'package.json': 'QA-FAKE-CREDENTIAL-0001\n{ "name": "x" }',
       'package-lock.json': '{"lockfileVersion":3}',
     });
 
     const serialized = await diagnose(root);
 
-    expect(serialized).not.toContain('sk_live_DEADBEEF_SECRET_TOKEN');
+    expect(serialized).not.toContain('QA-FAKE-CREDENTIAL-0001');
     expect(serialized).toContain('node/package-json-invalid');
     expect(serialized).toContain('invalid JSON');
   });
