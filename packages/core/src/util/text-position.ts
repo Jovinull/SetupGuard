@@ -18,12 +18,6 @@ export function offsetToPosition(text: string, offset: number): TextPosition {
   return { line, column: clamped - lineStart + 1 };
 }
 
-/** Return the text of a 1-based line, without its terminator. `''` when out of range. */
-export function lineAt(text: string, line: number): string {
-  if (line < 1) return '';
-  return text.split('\n')[line - 1]?.replace(/\r$/, '') ?? '';
-}
-
 /**
  * Trim an excerpt to a safe display length. Findings quote repository content,
  * which is untrusted and may be arbitrarily long.
