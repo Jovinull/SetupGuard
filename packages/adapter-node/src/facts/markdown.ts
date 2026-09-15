@@ -18,6 +18,19 @@ export interface DocumentedCommand {
   readonly source: 'code-block' | 'inline-code';
 }
 
+/**
+ * Fences that transcribe a *session*: commands are prefixed with a prompt and
+ * everything else is program output. Reading an output line as a command is a
+ * false positive waiting to happen, so in these fences only prompted lines
+ * count.
+ */
+const SESSION_LANGUAGES: ReadonlySet<string> = new Set([
+  'console',
+  'shell-session',
+  'shellsession',
+  'terminal',
+]);
+
 /** Fence info strings treated as shell. An empty info string counts as shell. */
 const SHELL_LANGUAGES: ReadonlySet<string> = new Set([
   '',
@@ -43,6 +56,7 @@ export function extractDocumentedCommands(markdown: string): DocumentedCommand[]
 
   let fenceMarker: string | undefined;
   let fenceIsShell = false;
+  let fenceIsSession = false;
 
   for (const [index, rawLine] of lines.entries()) {
     const line = rawLine ?? '';
@@ -54,18 +68,21 @@ export function extractDocumentedCommands(markdown: string): DocumentedCommand[]
       if (closesFence(line, fenceMarker)) {
         fenceMarker = undefined;
         fenceIsShell = false;
+        fenceIsSession = false;
         continue;
       }
       if (fenceIsShell) {
-        const command = normalizeShellLine(line);
+        const command = normalizeShellLine(line, fenceIsSession);
         if (command) commands.push({ line: index + 1, command, source: 'code-block' });
       }
       continue;
     }
 
     if (fence?.[2]) {
+      const language = (fence[3] ?? '').toLowerCase();
       fenceMarker = fence[2];
-      fenceIsShell = SHELL_LANGUAGES.has((fence[3] ?? '').toLowerCase());
+      fenceIsShell = SHELL_LANGUAGES.has(language);
+      fenceIsSession = SESSION_LANGUAGES.has(language);
       continue;
     }
 
@@ -88,12 +105,14 @@ function closesFence(line: string, openingMarker: string): boolean {
 }
 
 /** Strip prompts and comments; return `undefined` when nothing executable remains. */
-function normalizeShellLine(line: string): string | undefined {
+function normalizeShellLine(line: string, sessionFence: boolean): string | undefined {
   const trimmed = line.trim();
   if (trimmed === '' || trimmed.startsWith('#')) return undefined;
-  // Shell-session transcripts prefix output lines with nothing and commands
-  // with `$` or `>`; without a prompt we cannot tell output from command, so we
-  // keep the line and let the reference parser reject anything unrecognised.
+  // In a session transcript the prompt is what separates a command from the
+  // output it produced, so an unprompted line there is output and is dropped.
+  // In a plain shell fence there is no prompt convention to rely on, and every
+  // line is a candidate.
+  if (sessionFence && !/^[$>]\s/.test(trimmed)) return undefined;
   return stripPrompt(trimmed);
 }
 

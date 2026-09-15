@@ -242,7 +242,12 @@ async function collectDocuments(
   fs: DiscoveryContext['fs'],
   gaps: FactGap[],
 ): Promise<DocumentFacts[]> {
-  const walked = await fs.walk({ dir: 'docs', extensions: ['.md'], maxDepth: 3, maxFiles: 50 });
+  const walked = await fs.walk({
+    dir: 'docs',
+    extensions: ['.md', '.mdx'],
+    maxDepth: 3,
+    maxFiles: 50,
+  });
   if (walked.truncated) {
     gaps.push({
       scope: 'documents',
