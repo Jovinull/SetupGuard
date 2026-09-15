@@ -1,0 +1,10 @@
+# Normalise line endings on the way in, and check out LF everywhere.
+#
+# Fixtures are inputs to the test suite and several assertions name exact line
+# numbers, so their bytes have to be the same on Linux, macOS and Windows. A
+# Windows clone with core.autocrlf=true would otherwise rewrite them.
+* text=auto eol=lf
+
+# The lockfile is deliberately NOT marked `-diff` or `linguist-generated`.
+# Marking it either way hides it from review, and a lockfile change is exactly
+# what a dependency or supply-chain review needs to see.
