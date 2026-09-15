@@ -13,17 +13,22 @@ export { collectNodeFacts, type NodeFacts, type DocumentFacts } from './facts/co
 export {
   parseDotenvKeys,
   mergeLocalKeys,
+  isAmbientEnvVar,
   AMBIENT_ENV_VARS,
+  AMBIENT_ENV_PREFIXES,
+  IMPORT_META_BUILTINS,
   ENV_EXAMPLE_FILES,
   ENV_LOCAL_FILES,
   type DotenvEntry,
   type DotenvFile,
+  type EnvAccessForm,
   type LocalKeyState,
 } from './facts/dotenv.js';
 
 export {
   scanEnvUsage,
   groupUsagesByName,
+  destructuredNames,
   SOURCE_EXTENSIONS,
   type EnvScanResult,
   type EnvUsage,

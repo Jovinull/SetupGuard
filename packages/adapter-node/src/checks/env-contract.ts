@@ -9,7 +9,7 @@ import {
 } from '@setupguard/core';
 
 import type { NodeFacts } from '../facts/collect.js';
-import { AMBIENT_ENV_VARS } from '../facts/dotenv.js';
+import { isAmbientEnvVar } from '../facts/dotenv.js';
 import { groupUsagesByName, type EnvUsage } from '../facts/env-usage.js';
 import { describeGaps, gapsFor, hasGap } from '../facts/gaps.js';
 
@@ -45,7 +45,11 @@ export const envContractCheck: Check<NodeFacts> = {
 
     const example = facts.envExampleFile;
     const usages = groupUsagesByName(facts.envUsages);
-    const usedNames = [...usages.keys()].filter((name) => !AMBIENT_ENV_VARS.has(name));
+    // A name is only the project's responsibility when no platform provides it.
+    // Ambience depends on the access form, so the check asks per usage.
+    const usedNames = [...usages.entries()]
+      .filter(([name, sites]) => sites.some((site) => !isAmbientEnvVar(name, site.form)))
+      .map(([name]) => name);
 
     if (usedNames.length === 0 && !example) {
       return notApplicable('The project reads no project-specific environment variables');

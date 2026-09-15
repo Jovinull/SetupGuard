@@ -98,8 +98,17 @@ export function mergeLocalKeys(files: readonly DotenvFile[]): Map<string, LocalK
 }
 
 /**
- * Variables provided by the platform or the toolchain. They are never reported
- * as "undocumented" because no repository is expected to declare them.
+ * Variables the platform provides on its own, whatever the project does.
+ *
+ * Reporting these as "undocumented" is noise: no repository is expected to
+ * declare `PATH`. Kept as three narrow rules rather than one flat list, so the
+ * list cannot grow without bound:
+ *
+ * 1. an exact name always provided by the OS, a CI runner or Node itself;
+ * 2. a prefix owned by a tool (`npm_package_*`, `npm_config_*`);
+ * 3. a name that is only ambient under a particular access form — Vite's
+ *    `import.meta.env.MODE` is built in, but `process.env.MODE` is the
+ *    project's own variable and must still be documented.
  */
 export const AMBIENT_ENV_VARS: ReadonlySet<string> = new Set([
   'CI',
@@ -119,3 +128,29 @@ export const AMBIENT_ENV_VARS: ReadonlySet<string> = new Set([
   'VERCEL',
   'VERCEL_ENV',
 ]);
+
+/** Prefixes owned by a tool, which sets every variable under them. */
+export const AMBIENT_ENV_PREFIXES: readonly string[] = ['npm_package_', 'npm_config_', 'npm_lifecycle_'];
+
+/**
+ * Built into Vite's `import.meta.env`. Ambient only through that form: a
+ * project reading `process.env.MODE` really did define `MODE` itself.
+ */
+export const IMPORT_META_BUILTINS: ReadonlySet<string> = new Set([
+  'BASE_URL',
+  'DEV',
+  'LEGACY',
+  'MODE',
+  'PROD',
+  'SSR',
+]);
+
+/** How the source read the variable; decides which ambient rules apply. */
+export type EnvAccessForm = 'process.env' | 'import.meta.env';
+
+/** True when the platform, not the project, is responsible for this variable. */
+export function isAmbientEnvVar(name: string, form: EnvAccessForm = 'process.env'): boolean {
+  if (AMBIENT_ENV_VARS.has(name)) return true;
+  if (AMBIENT_ENV_PREFIXES.some((prefix) => name.startsWith(prefix))) return true;
+  return form === 'import.meta.env' && IMPORT_META_BUILTINS.has(name);
+}
