@@ -594,6 +594,14 @@ Histórico das execuções:
 | `21b2b72` | Node 24 passou nos três sistemas; Node 20.11 falhou nos três |
 | `f880217` | Node 24 passou; Node 22.13 falhou só no auto-diagnóstico |
 | `7b52b63` | tudo verde |
+| `ba19535` | matriz e audit verdes; o job `extension` falhou só na lista do VSIX |
+| `80b6207` | tudo verde, oito jobs |
+
+A falha em `ba19535` foi do próprio passo de verificação, não do artefato: o
+VSIX tinha exatamente os sete arquivos esperados, mas o `sort` do runner e o da
+máquina local ordenam `extension.vsixmanifest` e `extension/LICENSE.txt` de
+forma diferente. Corrigido fixando `LC_ALL=C`. A lição é a que o passo existia
+para dar: uma lista exata só serve se a ordem for a mesma em toda máquina.
 
 A falha em `21b2b72` foi de configuração: o repositório fixava pnpm 11.18, que
 exige Node >= 22.13, então o passo de cache do `setup-node` quebrava antes de
