@@ -34,6 +34,7 @@ Tomadas durante a implementação da fundação em 2026-09-14. Cada uma está de
 
   | # | Condição | Estado |
   |---|---|---|
+  | 0 | `.setupguard.yml` não pôde ser aplicado | `INCOMPLETE` |
   | 1 | algum finding `error` | `BLOCKED` |
   | 2 | algum check `internal-error` | `INCOMPLETE` |
   | 3 | algum check `inconclusive` | `INCOMPLETE` |
@@ -41,7 +42,9 @@ Tomadas durante a implementação da fundação em 2026-09-14. Cada uma está de
   | 5 | nenhum check conclusivo | `INCOMPLETE` |
   | 6 | caso contrário | `READY` |
 
-  `BLOCKED` vence tudo porque um finding `error` é evidência que **foi** coletada: um diagnóstico parcial que já achou um bloqueio continua bloqueado. Todo o resto cede a `INCOMPLETE`, inclusive `warning` — um aviso não pode mascarar que parte do diagnóstico não aconteceu.
+  `BLOCKED` vence todo o resto porque um finding `error` é evidência que **foi** coletada: um diagnóstico parcial que já achou um bloqueio continua bloqueado. `warning` cede a `INCOMPLETE` — um aviso não pode mascarar que parte do diagnóstico não aconteceu.
+
+  A única coisa acima de `BLOCKED` é uma configuração que não pôde ser aplicada (linha 0): aí não sabemos o que o autor pediu, e o `BLOCKED` produzido com padrões pode ser exatamente o achado que a configuração rebaixaria. Ver [15-configuracao.md](15-configuracao.md).
 
 - **`READY` exige evidência positiva e ausência de lacunas:** ao menos um check conclusivo (`pass`/`warning`/`error`) e nenhum `inconclusive` ou `internal-error`. `skipped` e `not-applicable` não contam como evidência, mas também não impedem `READY`: são estados normais de um check que legitimamente não se aplica.
 - Toda interface imprime contra quais níveis o resultado vale.
@@ -187,7 +190,7 @@ A linha para os marcos seguintes continua em aberto: adicionar uma correção ex
 | 2 | Qual é o modelo de resultado comum a CLI, VS Code e CI? | **Respondida** — `Report` com `schemaVersion: 1` |
 | 3 | O que exatamente cada estado agregado garante? | **Respondida** — ver [04-funcionamento-e-checks.md](04-funcionamento-e-checks.md) |
 | 4 | Quais comandos rodam automaticamente, sob demanda ou nunca? | **Respondida** — nenhum roda automaticamente; os níveis 1 e 2 não executam processo algum |
-| 5 | Qual é o schema mínimo de configuração necessário para reduzir falsos positivos? | **Em aberto** — é a principal lacuna hoje |
+| 5 | Qual é o schema mínimo de configuração necessário para reduzir falsos positivos? | **Respondida** — `version`, `checks.<id>.severity`, `env.optional`, `ignore`; ver [15-configuracao.md](15-configuracao.md) |
 | 6 | Como monorepos são representados e agregados? | **Parcial** — só a fronteira de projeto; agregação por workspace continua em aberto |
 | 7 | Quais Quick Fixes, se houver, entram na v0.1? | **Respondida** — nenhum |
 

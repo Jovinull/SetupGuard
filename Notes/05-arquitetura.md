@@ -156,15 +156,14 @@ Metas de cobertura e orçamento de performance continuam **Em aberto**; ainda n�
 | Módulos | ESM, `NodeNext` |
 | Biblioteca de CLI | nenhuma; parser próprio (superfície pequena, contrato de exit code é o que importa) |
 | Parser de Markdown | nenhum; scanner de fences próprio (só precisamos de blocos shell e code spans) |
-| Dependências de runtime | apenas `semver` |
+| Dependências de runtime | `semver` (adapter-node) e `yaml` (core, para `.setupguard.yml`) — ambas sem dependências transitivas |
 | Protocolo extensão ↔ core | chamada de função em processo; `@setupguard/vscode` projeta `Report` em diagnostics puros, sem depender do módulo `vscode` |
 | Licença | MIT |
 
 ### Ainda não decididas
 
-- biblioteca de schema/configuração (necessária quando existir `.setupguard.yml`);
 - cache e invalidação;
 - SDK e isolamento de plugins;
 - estratégia de distribuição da Action;
-- compatibilidade multiplataforma (só Linux foi testado).
+- namespace de configuração por adapter, necessário no primeiro segundo ecossistema.
 

@@ -209,7 +209,8 @@ que a configuração rebaixaria. Dizer "incompleto" é a única afirmação hone
 
 | Código | Quando |
 |---|---|
-| `config/unreadable` | arquivo existe mas não pôde ser lido |
+| `config/unreadable` | arquivo existe mas não pôde ser lido, ou o filesystem falhou ao ser consultado |
+| `config/not-a-file` | o caminho existe mas não é arquivo regular utilizável: diretório, symlink quebrado, ou symlink para fora do workspace |
 | `config/invalid-yaml` | sintaxe inválida, ou chave duplicada |
 | `config/unsupported-syntax` | alias/âncora YAML, ou tag desconhecida |
 | `config/not-an-object` | documento não é um mapeamento |
@@ -233,6 +234,17 @@ teste durante a implementação.
 O arquivo é lido pelo `WorkspaceFs`, então herda o limite de 2 MiB e o
 confinamento à raiz.
 
+**Presença e usabilidade são perguntas separadas.** Colapsá-las em `isFile()`
+fazia um `.setupguard.yml` que fosse diretório, symlink quebrado ou symlink para
+fora do workspace parecer exatamente igual a "nenhum arquivo" — e uma
+configuração que elevasse um warning a error sumia em silêncio, com exit 0. A
+descoberta usa `listDir` para saber se a entrada existe e `isFile` para saber se
+serve; existir sem servir é `config/not-a-file`.
+
+`loadConfig` **nunca lança**, e isso é contrato exportado: todo o corpo está
+dentro de uma barreira de erro, porque uma implementação de `WorkspaceFs` que
+rejeite não pode derrubar a execução.
+
 ## Segurança do YAML
 
 Configuração é dado, nunca código.
@@ -246,9 +258,11 @@ Configuração é dado, nunca código.
   booleano do YAML 1.1.
 - **Tags desconhecidas são rejeitadas.** O parser as reporta como aviso e degrada
   o valor; aceitar seria aceitar um documento que não entendemos.
-- **Âncoras e aliases são rejeitados.** Configuração não precisa deles, e
-  expansão de alias é a única parte do YAML que transforma um documento pequeno
-  em um muito grande.
+- **Âncoras e aliases são rejeitados** — os dois, e não só os aliases. Uma
+  âncora é como um alias se escreve; declarar "sem âncoras" e procurar apenas
+  por aliases deixava `version: &release 1` passar em silêncio. Configuração não
+  precisa de nenhum dos dois, e expansão de alias é a única parte do YAML que
+  transforma um documento pequeno em um muito grande.
 - `uniqueKeys` liga: chave repetida é erro, em vez de a última vencer em
   silêncio.
 - Merge keys (`<<`) desligadas.
@@ -264,6 +278,23 @@ permitidas, regex de nome de variável) alimentam **tanto** o validador **quanto
 compara byte a byte o arquivo em disco com a saída da função.
 
 Divergir exige alterar a constante e não regenerar — e isso quebra o CI.
+
+### Até onde o schema valida
+
+Um teste de **paridade** roda o mesmo corpus de configurações contra o schema e
+contra o loader, e exige que os dois concordem. O schema expressa: tipos, chaves
+permitidas, `version`, severidades, nomes de variável, **duplicatas**
+(`uniqueItems`) e a gramática de `ignore` — inclusive `../`, caminho absoluto,
+negação e sintaxe não suportada.
+
+Há **uma** divergência, deliberada e registrada no próprio teste: **ids de
+check**. Quais existem depende dos adapters carregados em tempo de execução, e
+enumerá-los no schema publicado pelo core faria o core conhecer o ecossistema.
+Para esse campo o schema é **estrutural** e o loader é a autoridade semântica.
+
+Isso importa para o editor: tudo o mais que o schema aceitar, o SetupGuard
+aceita. Só um id de check inexistente pode parecer válido no editor e produzir
+`INCOMPLETE` na execução.
 
 Ainda não é distribuído por URL. Serve como contrato verificável e base para
 autocomplete no editor mais adiante.

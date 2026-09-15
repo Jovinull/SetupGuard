@@ -81,7 +81,7 @@ Diferenças em relação ao layout ilustrativo de
 | Lint | ESLint 9 flat config + typescript-eslint (`recommendedTypeChecked`) | regras com tipo detectam erros reais |
 | Biblioteca de CLI | nenhuma; parser próprio | a superfície é pequena e o contrato de exit code importa mais que ergonomia |
 | Parser de Markdown | nenhum; scanner de fences próprio | só precisamos de blocos shell e code spans; um parser completo traria ambiguidade sem ganho |
-| Dependências de runtime | apenas `semver` | comparação de ranges é fácil de errar à mão |
+| Dependências de runtime | `semver` no adapter-node, `yaml` no core | comparação de ranges e parsing de YAML são fáceis de errar à mão; ambas sem dependências transitivas |
 | Licença | MIT | opção mais permissiva entre as sugeridas |
 
 Todos os pacotes estão marcados `"private": true`. Publicação é uma decisão
@@ -494,7 +494,7 @@ existem — são o próximo marco.
 
 ## Testes
 
-Vitest, 252 testes em 16 arquivos, executando contra o `src` (sem build prévio).
+Vitest, 366 testes em 20 arquivos, executando contra o `src` (sem build prévio).
 
 Fixtures são **diretórios de projeto reais** em `fixtures/`, não mocks:
 
@@ -573,8 +573,8 @@ mais um job de `pnpm audit`.
 O workflow roda em `ubuntu × macos × windows` por `node 22.13.0 × 24`, com
 `pnpm install --frozen-lockfile`, mais um job separado de `pnpm audit`.
 
-**Estado no commit `7b52b63`: as sete jobs passam.** 252 testes, três sistemas
-operacionais, duas versões de Node.
+**As sete jobs passam.** 366 testes, três sistemas operacionais, duas versões
+de Node. Histórico das execuções abaixo.
 
 Histórico das execuções:
 

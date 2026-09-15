@@ -28,7 +28,11 @@ export type ExitCode = (typeof EXIT_CODES)[keyof typeof EXIT_CODES];
  * Map a report to an exit code.
  *
  * An incomplete diagnosis is never reported as a broken project: it yields
- * `INCOMPLETE`, and only when no finding already failed the run.
+ * `INCOMPLETE`, and it takes precedence over findings rather than yielding to
+ * them. The aggregator only reaches that state when the findings do not tell
+ * the whole story — most importantly when `.setupguard.yml` could not be
+ * applied, where the run produced default-configuration findings the repository
+ * may well have asked to re-level.
  *
  * `--fail-on never` suppresses failures caused by *findings*. It deliberately
  * does not suppress code 3: "I could not check anything" is not a finding the
