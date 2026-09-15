@@ -1,10 +1,11 @@
 /**
- * `@setupguard/vscode` — editor presentation layer.
+ * `setupguard` — the VS Code extension.
  *
- * Status in v0.1: the projection from a core report to editor diagnostics is
- * implemented and tested; the extension manifest, activation events, views and
- * commands are not. This package intentionally has no `vscode` dependency yet,
- * so it stays testable in plain Node.
+ * This entry point exports only the parts that do not touch the `vscode`
+ * module: the projection from a report to editor diagnostics, the session
+ * lifecycle, the status bar derivation, the report rendering and the watch
+ * list. They are the layer where the decisions live, and they are testable in
+ * plain Node.
  */
 
 export {
@@ -16,3 +17,11 @@ export {
   type DiagnosticsProjection,
   type EditorDiagnostic,
 } from './diagnostics.js';
+
+export {
+  DiagnosisSession,
+  type CancelScheduled,
+  type DiagnosisPhase,
+  type SessionOptions,
+  type SessionState,
+} from './session.js';
