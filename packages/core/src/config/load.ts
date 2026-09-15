@@ -206,7 +206,11 @@ function validate(
         diagnostic('config/unknown-key', `Unknown configuration key "${redact(key)}"`, {
           ...atKey([key]),
           path: key,
-          remediation: `Known keys: ${CONFIG_TOP_LEVEL_KEYS.join(', ')}.`,
+          // Not "Known keys: ...": the redactor reads `<name>: <value>` as an
+          // assignment and `keys` is a sensitive name, so the list itself
+          // would be replaced with `***`. The wording carries the meaning
+          // without the shape.
+          remediation: `Valid keys are ${CONFIG_TOP_LEVEL_KEYS.join(', ')}.`,
         }),
       );
     }
@@ -345,7 +349,7 @@ function readEnv(value: unknown, at: Locator, atKey: Locator, diagnostics: Confi
         diagnostic('config/unknown-key', `Unknown key "${redact(key)}" under "env"`, {
           ...atKey(['env', key]),
           path: `env.${key}`,
-          remediation: `Known keys: ${CONFIG_ENV_KEYS.join(', ')}.`,
+          remediation: `Valid keys are ${CONFIG_ENV_KEYS.join(', ')}.`,
         }),
       );
     }

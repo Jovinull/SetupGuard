@@ -295,6 +295,18 @@ describe('invalid configuration', () => {
     expect(unknownSetting.diagnostics[0]).toMatchObject({ code: 'config/unknown-key', line: 4, column: 5 });
   });
 
+  it('keeps the list of valid keys readable instead of redacting it', async () => {
+    // `Known keys: version, checks, ...` reads as `<sensitive name>: <value>`
+    // to the redactor, which replaced the whole list with `***` and left the
+    // remediation saying nothing.
+    const config = await withConfig('version: 1\nrules: {}\n');
+    const remediation = config.diagnostics[0]?.remediation ?? '';
+
+    expect(remediation).toContain('version');
+    expect(remediation).toContain('checks');
+    expect(remediation).not.toContain('***');
+  });
+
   it('names the known check ids so a typo is easy to fix', async () => {
     const config = await withConfig('version: 1\nchecks:\n  node/docs-drift:\n    severity: off\n');
 
