@@ -36,15 +36,46 @@ export interface LoadConfigOptions {
  * Discover, parse, validate and normalise `.setupguard.yml` — the one place
  * that touches YAML.
  *
- * Never throws and never returns a partially-applied configuration. When the
+ * Never throws, and never returns a partially-applied configuration. When the
  * file cannot be used, the result carries `valid: false` plus diagnostics, and
  * the defaults so the run can still produce information.
+ *
+ * The whole body sits inside an error barrier because "never throws" is part of
+ * the exported contract: a `WorkspaceFs` implementation that rejects — a
+ * permission error on the directory, a custom implementation in a host
+ * application — must not take the run down with it.
  */
 export async function loadConfig(options: LoadConfigOptions): Promise<ResolvedConfig> {
+  try {
+    return await discoverAndLoad(options);
+  } catch (error) {
+    return invalid([
+      diagnostic('config/unreadable', `${CONFIG_FILE_NAME} could not be inspected`, {
+        remediation: redact(error instanceof Error ? error.message : String(error)),
+      }),
+    ]);
+  }
+}
+
+async function discoverAndLoad(options: LoadConfigOptions): Promise<ResolvedConfig> {
   const { fs } = options;
 
+  // Presence and usability are two different questions, and collapsing them
+  // into `isFile()` made a `.setupguard.yml` that is a directory, a broken
+  // symlink, or a symlink out of the workspace look exactly like no file at
+  // all — silently dropping a configuration that may have been raising a
+  // warning to an error. `listDir` reports the directory entry whatever it
+  // points at, so the two questions can be asked separately.
+  const present = (await fs.listDir('.')).includes(CONFIG_FILE_NAME);
+  if (!present) return await noConfig(fs);
+
   if (!(await fs.isFile(CONFIG_FILE_NAME))) {
-    return await noConfig(fs);
+    return invalid([
+      diagnostic('config/not-a-file', `${CONFIG_FILE_NAME} is not a readable regular file`, {
+        remediation:
+          'It must be a regular file inside the workspace. A directory, a broken symlink, or a link pointing outside the workspace cannot be used.',
+      }),
+    ]);
   }
 
   let text: string;
@@ -105,22 +136,31 @@ function parseAndValidate(text: string, knownCheckIds: readonly string[]): Resol
     ),
   );
 
-  // Anchors and aliases are rejected outright. A configuration file has no need
-  // for them, and alias expansion is the one part of YAML that can turn a small
-  // document into a very large one.
-  visit(doc, {
-    Alias(_key, node) {
+  // Anchors *and* aliases are rejected. Alias expansion is the one part of YAML
+  // that turns a small document into a very large one, and an anchor is how an
+  // alias gets written — declaring the contract as "no anchors" while only
+  // looking for aliases left `version: &release 1` quietly accepted.
+  visit(doc, (_key, node) => {
+    if (node === null || typeof node !== 'object') return;
+    const anchored = node as { anchor?: string; range?: [number, number, number] };
+    if (isAlias(node)) {
       syntax.push(
         diagnostic('config/unsupported-syntax', 'YAML aliases are not supported in configuration', {
-          ...positionFromOffset(text, node.range?.[0]),
+          ...positionFromOffset(text, anchored.range?.[0]),
           remediation: 'Write the value out instead of referencing an anchor.',
         }),
       );
-    },
+      return;
+    }
+    if (typeof anchored.anchor === 'string') {
+      syntax.push(
+        diagnostic('config/unsupported-syntax', 'YAML anchors are not supported in configuration', {
+          ...positionFromOffset(text, anchored.range?.[0]),
+          remediation: `Remove the "&${redact(anchored.anchor)}" anchor.`,
+        }),
+      );
+    }
   });
-  if (isAlias(doc.contents)) {
-    syntax.push(diagnostic('config/unsupported-syntax', 'YAML aliases are not supported in configuration'));
-  }
 
   if (syntax.length > 0) return invalid(syntax);
 

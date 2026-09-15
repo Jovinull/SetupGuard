@@ -19,6 +19,7 @@ export type SeverityOverride = 'error' | 'warning' | 'off';
 /** Machine-readable identifier for a problem in the configuration file itself. */
 export type ConfigDiagnosticCode =
   | 'config/unreadable'
+  | 'config/not-a-file'
   | 'config/invalid-yaml'
   | 'config/unsupported-syntax'
   | 'config/not-an-object'
