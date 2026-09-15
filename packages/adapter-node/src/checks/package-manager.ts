@@ -52,19 +52,25 @@ export const packageManagerCheck: Check<NodeFacts> = {
       });
     }
 
-    if (lockfiles.length > 1) {
+    // What matters is how many *package managers* are implied, not how many
+    // files exist. `package-lock.json` alongside `npm-shrinkwrap.json` is a
+    // legal npm layout, and `bun.lockb` alongside `bun.lock` is just the old
+    // and new Bun formats. Counting files reported both as a conflict between
+    // "different package managers", which was factually wrong.
+    const managers = [...new Set(lockfiles.map((lock) => lock.manager))];
+    if (managers.length > 1) {
       findings.push({
         code: 'node/multiple-lockfiles',
         severity: 'warning',
         confidence: 'high',
-        message: `Multiple lockfiles present: ${lockfiles.map((lock) => lock.file).join(', ')}`,
+        message: `Lockfiles from ${managers.length} different package managers are present: ${managers.join(', ')}`,
         explanation:
-          'Each lockfile belongs to a different package manager. A contributor cannot tell which one is authoritative, and the stale ones drift silently.',
-        expected: 'exactly one lockfile',
-        actual: lockfiles.map((lock) => lock.file).join(', '),
+          'A contributor cannot tell which package manager is authoritative, and the lockfiles that are not used drift silently out of date.',
+        expected: 'lockfiles from exactly one package manager',
+        actual: lockfiles.map((lock) => `${lock.file} (${lock.manager})`).join(', '),
         remediation:
           'Keep the lockfile of the package manager the project actually uses and delete the others.',
-        evidence: lockfiles.map((lock) => ({ file: lock.file })),
+        evidence: lockfiles.map((lock) => ({ file: lock.file, detail: `belongs to ${lock.manager}` })),
       });
     }
 
