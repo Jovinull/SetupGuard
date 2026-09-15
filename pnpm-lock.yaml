@@ -55,6 +55,10 @@ importers:
       '@setupguard/core':
         specifier: workspace:*
         version: link:../core
+    devDependencies:
+      '@setupguard/adapter-node':
+        specifier: workspace:*
+        version: link:../adapter-node
 
 packages:
 

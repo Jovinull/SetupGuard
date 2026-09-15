@@ -2,7 +2,10 @@ packages:
   - 'packages/*'
 
 # esbuild (a Vitest dependency) fetches its native binary in a postinstall
-# script. pnpm 11 blocks every command until that script is explicitly allowed,
+# script. pnpm blocks every command until that script is explicitly allowed,
 # so a clone that does not set this cannot run `pnpm check`.
+#
+# The key is `allowBuilds` because this repository is pinned to pnpm 11;
+# pnpm 10 spells the same setting `onlyBuiltDependencies`.
 allowBuilds:
   esbuild: true

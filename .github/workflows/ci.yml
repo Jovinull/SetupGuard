@@ -33,7 +33,7 @@ jobs:
         # that boundary holds there.
         os: [ubuntu-latest, macos-latest, windows-latest]
         # The lowest version package.json#engines allows, and the current LTS.
-        node: ['20.11.0', '24']
+        node: ['22.13.0', '24']
 
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
