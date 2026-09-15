@@ -293,8 +293,12 @@ Divergir exige alterar a constante e não regenerar — e isso quebra o CI.
 
 ### Até onde o schema valida
 
-Um teste de **paridade** roda um corpus de 38 configurações contra o schema e
-contra o loader, e exige que os dois cheguem ao mesmo veredito. O schema
+A paridade é verificada de duas formas. Um **corpus** de 42 configurações roda
+contra o schema e contra o loader exigindo o mesmo veredito, e um teste
+**diferencial exaustivo** enumera todas as 7.380 strings de 1 a 4 caracteres
+sobre um alfabeto escolhido para tocar cada regra (separadores, pontos,
+curingas, negação, espaço, raiz de drive) e exige zero divergência nas duas
+direções. O schema
 expressa: tipos, chaves permitidas, `version`, severidades, nomes de variável,
 duplicatas (`uniqueItems`) e a gramática completa de `ignore` — `../`, caminho
 absoluto (Unix e Windows, inclusive atrás de espaço), negação, sintaxe não
@@ -312,9 +316,13 @@ ecossistema. Para esse campo o schema é **estrutural**; o loader é a autoridad
 
 O que isso significa no editor: de tudo que o schema aceita, só um id de check
 inexistente pode parecer válido e ainda assim produzir `INCOMPLETE` na execução.
-A garantia é sobre o corpus testado, não sobre uma prova de equivalência — um
-corpus finito não demonstra paridade total, e qualquer regra nova precisa entrar
-nos dois lados e no corpus.
+
+A garantia continua sendo sobre o que é testado, não uma prova de equivalência:
+o diferencial cobre exaustivamente até 4 caracteres, não strings arbitrárias.
+Qualquer regra nova precisa entrar nos dois lados e no corpus. Foi exatamente
+esse teste que pegou `...` — um nome de arquivo legítimo — sendo aceito pelo
+loader e rejeitado pelo schema, porque a regex exigia um caractere que não fosse
+ponto nem separador, mais estrito do que a regra que deveria espelhar.
 
 Ainda não é distribuído por URL. Serve como contrato verificável e base para
 autocomplete no editor mais adiante.

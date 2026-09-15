@@ -497,7 +497,7 @@ existem — são o próximo marco.
 
 ## Testes
 
-Vitest, 368 testes em 20 arquivos, executando contra o `src` (sem build prévio).
+Vitest, 386 testes em 20 arquivos, executando contra o `src` (sem build prévio).
 
 Fixtures são **diretórios de projeto reais** em `fixtures/`, não mocks:
 
@@ -576,7 +576,7 @@ mais um job de `pnpm audit`.
 O workflow roda em `ubuntu × macos × windows` por `node 22.13.0 × 24`, com
 `pnpm install --frozen-lockfile`, mais um job separado de `pnpm audit`.
 
-**As sete jobs passam.** 368 testes, três sistemas operacionais, duas versões
+**As sete jobs passam.** 386 testes, três sistemas operacionais, duas versões
 de Node. Histórico das execuções abaixo.
 
 Histórico das execuções:
