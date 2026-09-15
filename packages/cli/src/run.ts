@@ -6,6 +6,7 @@ import {
   AdapterRegistry,
   NodeEnvironmentProbe,
   NodeWorkspaceFs,
+  describeError,
   reportToJson,
   runDiagnosis,
   type Report,
@@ -100,38 +101,44 @@ export async function runCli(argv: readonly string[], io: CliIo, version: string
     return { exitCode: EXIT_CODES.USAGE };
   }
 
-  let report: Report;
+  // Everything past argument parsing runs inside one guard. Diagnosis,
+  // serialisation and rendering can all throw, and an exception escaping here
+  // would bypass `runDiagnosis`'s sanitisation entirely: its message goes
+  // straight to stderr, and a message can quote repository content. Hence
+  // `describeError`, which redacts and caps like every other report field.
   try {
-    report = await runDiagnosis({
+    const report = await runDiagnosis({
       fs: new NodeWorkspaceFs(root),
       environment: new NodeEnvironmentProbe({ env: io.env }),
       registry: new AdapterRegistry([nodeAdapter]),
       levels: options.levels,
     });
+
+    const nothingDetected = report.adapters.every((adapter) => !adapter.detected);
+    const unsupportedHint =
+      'No supported project was detected in this directory. SetupGuard v0.1 only understands Node.js projects.';
+
+    if (options.format === 'json') {
+      io.stdout(reportToJson(report));
+      // The JSON goes to stdout for a machine; a human tailing the job log still
+      // needs to be told why the exit code is 3.
+      if (report.readiness === 'INCOMPLETE') {
+        io.stderr(
+          nothingDetected ? unsupportedHint : (report.incompleteReason ?? 'The diagnosis is incomplete.'),
+        );
+      }
+    } else {
+      io.stdout(renderHuman(report, { color: shouldUseColor(options, io), verbose: options.verbose }));
+      // The rendered footer already states the reason; only the ecosystem hint
+      // adds anything, so it is the only thing repeated on stderr.
+      if (report.readiness === 'INCOMPLETE' && nothingDetected) io.stderr(unsupportedHint);
+    }
+
+    return { exitCode: exitCodeFor(report, options.failOn), report };
   } catch (error) {
-    io.stderr(`SetupGuard failed: ${error instanceof Error ? error.message : String(error)}`);
+    io.stderr(`SetupGuard failed: ${describeError(error)}`);
     return { exitCode: EXIT_CODES.INCOMPLETE };
   }
-
-  const nothingDetected = report.adapters.every((adapter) => !adapter.detected);
-  const unsupportedHint =
-    'No supported project was detected in this directory. SetupGuard v0.1 only understands Node.js projects.';
-
-  if (options.format === 'json') {
-    io.stdout(reportToJson(report));
-    // The JSON goes to stdout for a machine; a human tailing the job log still
-    // needs to be told why the exit code is 3.
-    if (report.readiness === 'INCOMPLETE') {
-      io.stderr(nothingDetected ? unsupportedHint : (report.incompleteReason ?? 'The diagnosis is incomplete.'));
-    }
-  } else {
-    io.stdout(renderHuman(report, { color: shouldUseColor(options, io), verbose: options.verbose }));
-    // The rendered footer already states the reason; only the ecosystem hint
-    // adds anything, so it is the only thing repeated on stderr.
-    if (report.readiness === 'INCOMPLETE' && nothingDetected) io.stderr(unsupportedHint);
-  }
-
-  return { exitCode: exitCodeFor(report, options.failOn), report };
 }
 
 /** Honour `--color`/`--no-color` first, then `NO_COLOR`, then TTY detection. */
