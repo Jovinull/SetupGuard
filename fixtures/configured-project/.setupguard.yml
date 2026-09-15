@@ -1,0 +1,16 @@
+version: 1
+
+checks:
+  # This project's README documents commands for a sibling service on purpose,
+  # so drift here is worth knowing about but must not block anyone.
+  node/docs-script-drift:
+    severity: warning
+
+env:
+  optional:
+    - SENTRY_DSN
+    - ANALYTICS_KEY
+
+ignore:
+  - docs/generated/**
+  - examples/**
