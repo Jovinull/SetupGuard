@@ -79,6 +79,8 @@ export function renderHuman(report: Report, options: RenderOptions): string {
   lines.push(...renderLevelSummary(report, theme));
   lines.push('');
 
+  lines.push(...renderConfigDiagnostics(report, theme));
+
   const withFindings = report.results.filter((result) => result.findings.length > 0);
   for (const result of withFindings) {
     lines.push(...renderResult(result, theme));
@@ -125,6 +127,31 @@ export function renderHuman(report: Report, options: RenderOptions): string {
  * ended as `internal-error` or `inconclusive` — a green tick for work that
  * never happened.
  */
+/**
+ * Configuration problems, printed before anything about the project.
+ *
+ * They are kept visually separate because they are a different kind of claim:
+ * `.setupguard.yml` being wrong says nothing about whether the repository can
+ * be cloned and run.
+ */
+function renderConfigDiagnostics(report: Report, theme: Theme): string[] {
+  if (report.config.diagnostics.length === 0) return [];
+
+  const lines = [paint(theme, 'bold', 'Configuration')];
+  for (const diagnostic of report.config.diagnostics) {
+    const location = formatLocation(diagnostic.file, diagnostic.line, diagnostic.column);
+    lines.push(`  ${paint(theme, 'red', 'config')}  ${diagnostic.message}`);
+    lines.push(paint(theme, 'dim', `          ${diagnostic.code} · ${location}`));
+    if (diagnostic.path) lines.push(paint(theme, 'dim', `          field: ${diagnostic.path}`));
+    if (diagnostic.remediation) lines.push(`          fix: ${diagnostic.remediation}`);
+  }
+  lines.push(
+    paint(theme, 'dim', '  The run continued with default settings, so this diagnosis is incomplete.'),
+  );
+  lines.push('');
+  return lines;
+}
+
 function renderLevelSummary(report: Report, theme: Theme): string[] {
   const lines: string[] = [];
   const width = 16;

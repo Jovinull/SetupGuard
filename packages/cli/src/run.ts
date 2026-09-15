@@ -7,6 +7,7 @@ import {
   NodeEnvironmentProbe,
   NodeWorkspaceFs,
   describeError,
+  loadConfig,
   reportToJson,
   runDiagnosis,
   type Report,
@@ -107,11 +108,22 @@ export async function runCli(argv: readonly string[], io: CliIo, version: string
   // straight to stderr, and a message can quote repository content. Hence
   // `describeError`, which redacts and caps like every other report field.
   try {
+    const workspace = new NodeWorkspaceFs(root);
+    const registry = new AdapterRegistry([nodeAdapter]);
+
+    // One discovery/parse/validate pass, before anything else runs. Checks
+    // receive configuration already normalised and never see YAML.
+    const config = await loadConfig({
+      fs: workspace,
+      knownCheckIds: registry.list().flatMap((adapter) => adapter.checks.map((check) => check.id)),
+    });
+
     const report = await runDiagnosis({
-      fs: new NodeWorkspaceFs(root),
+      fs: workspace,
       environment: new NodeEnvironmentProbe({ env: io.env }),
-      registry: new AdapterRegistry([nodeAdapter]),
+      registry,
       levels: options.levels,
+      config,
     });
 
     const nothingDetected = report.adapters.every((adapter) => !adapter.detected);
