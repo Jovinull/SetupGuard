@@ -1,4 +1,4 @@
-import { allFindings, type Finding, type Report, type Severity } from '@setupguard/core';
+import { allFindings, type ConfigDiagnostic, type Finding, type Report, type Severity } from '@setupguard/core';
 
 /**
  * Editor-facing projection of a report.
@@ -9,8 +9,7 @@ import { allFindings, type Finding, type Report, type Severity } from '@setupgua
  * extension itself becomes a thin shell that converts these records into
  * `vscode.Diagnostic` objects and publishes them.
  *
- * v0.1 stops here on purpose: the milestone is the engine, not the UI
- * (`Notes/07-extensao-vscode.md`).
+ * See `Notes/16-extensao-vscode.md` for how the extension host consumes this.
  */
 
 /** Mirrors `vscode.DiagnosticSeverity`. */
@@ -81,6 +80,37 @@ export function toDiagnostics(report: Report): DiagnosticsProjection {
   }
 
   return { diagnostics, unplaced };
+}
+
+/** The `checkId` carried by diagnostics about the configuration file itself. */
+export const CONFIG_CHECK_ID = 'setupguard/config';
+
+/**
+ * Project the configuration diagnostics onto the editor.
+ *
+ * These are deliberately a separate function and a separate `checkId`: a broken
+ * `.setupguard.yml` is a problem with SetupGuard's own input, not evidence that
+ * the repository cannot be run. They are errors because every one of them makes
+ * the configured diagnosis fail to happen — the run falls back to defaults and
+ * readiness becomes `INCOMPLETE`.
+ */
+export function toConfigDiagnostics(report: Report): readonly EditorDiagnostic[] {
+  return report.config.diagnostics.map((diagnostic) => ({
+    file: diagnostic.file,
+    range: toRange(diagnostic.line, diagnostic.column),
+    severity: DIAGNOSTIC_SEVERITY.Error,
+    message: buildConfigMessage(diagnostic),
+    code: diagnostic.code,
+    source: 'SetupGuard' as const,
+    checkId: CONFIG_CHECK_ID,
+  }));
+}
+
+function buildConfigMessage(diagnostic: ConfigDiagnostic): string {
+  const lines = [diagnostic.message];
+  if (diagnostic.path) lines.push(`Field: ${diagnostic.path}`);
+  if (diagnostic.remediation) lines.push(diagnostic.remediation);
+  return lines.join('\n');
 }
 
 /**

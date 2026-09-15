@@ -10,6 +10,8 @@
 
 export {
   toDiagnostics,
+  toConfigDiagnostics,
+  CONFIG_CHECK_ID,
   DIAGNOSTIC_SEVERITY,
   type DiagnosticPosition,
   type DiagnosticRange,
