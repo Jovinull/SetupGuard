@@ -61,6 +61,93 @@ describe('discovery', () => {
   });
 });
 
+describe('a configuration that exists but cannot be used', () => {
+  async function workspaceWith(build: (root: string) => Promise<void>): Promise<ResolvedConfig> {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'setupguard-notfile-'));
+    created.push(root);
+    await build(root);
+    return loadConfig({ fs: new NodeWorkspaceFs(root), knownCheckIds: KNOWN });
+  }
+
+  const symlinks = process.platform === 'win32' ? it.skip : it;
+
+  it('a directory with the configuration name', async () => {
+    const config = await workspaceWith(async (root) => {
+      await fs.mkdir(path.join(root, CONFIG_FILE_NAME));
+    });
+
+    // Previously indistinguishable from "no configuration": the run went green
+    // while whatever the file was meant to change never applied.
+    expect(codes(config)).toEqual(['config/not-a-file']);
+    expect(config.valid).toBe(false);
+  });
+
+  symlinks('a broken symlink', async () => {
+    const config = await workspaceWith(async (root) => {
+      await fs.symlink(path.join(root, 'nowhere.yml'), path.join(root, CONFIG_FILE_NAME));
+    });
+
+    expect(codes(config)).toEqual(['config/not-a-file']);
+  });
+
+  symlinks('a symlink pointing outside the workspace', async () => {
+    const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'setupguard-outside-'));
+    created.push(outside);
+    await fs.writeFile(path.join(outside, 'real.yml'), 'version: 1\n');
+
+    const config = await workspaceWith(async (root) => {
+      await fs.symlink(path.join(outside, 'real.yml'), path.join(root, CONFIG_FILE_NAME));
+    });
+
+    // Refusing to follow it is right; doing so silently was not.
+    expect(codes(config)).toEqual(['config/not-a-file']);
+  });
+
+  symlinks('a symlink that stays inside the workspace still works', async () => {
+    const config = await workspaceWith(async (root) => {
+      await fs.writeFile(path.join(root, 'real.yml'), 'version: 1\n');
+      await fs.symlink(path.join(root, 'real.yml'), path.join(root, CONFIG_FILE_NAME));
+    });
+
+    expect(config.valid).toBe(true);
+    expect(config.diagnostics).toEqual([]);
+  });
+});
+
+describe('loadConfig never throws', () => {
+  it('turns a filesystem that rejects into a diagnostic', async () => {
+    // "Never throws" is part of the exported contract, and the first probe used
+    // to sit outside any barrier.
+    const hostile = {
+      root: '/nowhere',
+      exists: () => Promise.reject(new Error('probe failed')),
+      isFile: () => Promise.reject(new Error('probe failed')),
+      readText: () => Promise.reject(new Error('probe failed')),
+      listDir: () => Promise.reject(new Error('probe failed')),
+      walk: () => Promise.reject(new Error('probe failed')),
+    };
+
+    const config = await loadConfig({ fs: hostile, knownCheckIds: KNOWN });
+
+    expect(codes(config)).toEqual(['config/unreadable']);
+    expect(config.valid).toBe(false);
+    expect(config.diagnostics[0]?.remediation).toContain('probe failed');
+  });
+
+  it('turns a failing read into a diagnostic', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'setupguard-unreadable-'));
+    created.push(root);
+    await fs.writeFile(path.join(root, CONFIG_FILE_NAME), 'x'.repeat(4096));
+
+    const config = await loadConfig({
+      fs: new NodeWorkspaceFs(root, { maxFileBytes: 1024 }),
+      knownCheckIds: KNOWN,
+    });
+
+    expect(codes(config)).toEqual(['config/unreadable']);
+  });
+});
+
 describe('valid configuration', () => {
   it('accepts the minimal file', async () => {
     const config = await withConfig('version: 1\n');
@@ -152,6 +239,10 @@ describe('invalid configuration', () => {
     ['duplicate ignore', 'version: 1\nignore:\n  - docs\n  - docs\n', 'config/duplicate-entry'],
     ['duplicate key', 'version: 1\nversion: 1\n', 'config/invalid-yaml'],
     ['yaml alias', 'version: 1\nignore: &a\n  - x\nenv: *a\n', 'config/unsupported-syntax'],
+    // An anchor is how an alias gets written; tolerating an unreferenced one
+    // while claiming to reject anchors was a contract the code did not keep.
+    ['unreferenced anchor on a scalar', 'version: &release 1\n', 'config/unsupported-syntax'],
+    ['unreferenced anchor on a list', 'version: 1\nignore: &paths\n  - generated/**\n', 'config/unsupported-syntax'],
     ['unknown tag', 'version: 1\nignore: !!js/function "x"\n', 'config/unsupported-syntax'],
   ];
 
