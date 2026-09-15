@@ -71,8 +71,6 @@ const IGNORE_PATTERN_RULES: readonly string[] = [
   '(?![^]*(?:^|/)\\.(?:/|$))',
   '(?![^]*//)',
   '(?![^]*/$)',
-  // At least one character that is not a separator or a dot.
-  '(?=[^]*[^./\\s])',
 ];
 
 /**
