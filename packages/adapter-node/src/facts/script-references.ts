@@ -19,15 +19,40 @@ export interface ScriptReference {
   readonly raw: string;
 }
 
-/** Flags that consume the following token, so it is not mistaken for a script. */
-const FLAGS_WITH_VALUE: ReadonlySet<string> = new Set([
+/**
+ * Flags that point the command at a *different* package than the one being
+ * analysed.
+ *
+ * When one of these appears anywhere in the command, the script name that
+ * follows belongs to another manifest, and resolving it against this
+ * `package.json` produces a confident, blocking, and wrong finding:
+ * `npm --prefix ./sub run build` was reported as a missing script even though
+ * `sub/package.json` declares it.
+ *
+ * There is no cheap way to resolve the target manifest at this level, so the
+ * reference is dropped instead. Precision over coverage: a missed drift costs
+ * far less than a false blocker.
+ */
+const WORKSPACE_REDIRECT_FLAGS: ReadonlySet<string> = new Set([
+  '--cwd',
+  '--dir',
   '--filter',
+  '--filter-prod',
   '-F',
-  '--workspace',
-  '-w',
   '--prefix',
   '-C',
-  '--dir',
+  '--recursive',
+  '-r',
+  '--workspace',
+  '-w',
+  '-W',
+  '--workspaces',
+  '--ws',
+]);
+
+/** Flags that consume the following token, so it is not mistaken for a script. */
+const FLAGS_WITH_VALUE: ReadonlySet<string> = new Set([
+  ...WORKSPACE_REDIRECT_FLAGS,
   '--if-present-only',
   '--reporter',
 ]);
@@ -73,6 +98,11 @@ function parseSegment(segment: string): ScriptReference | undefined {
   if (manager === undefined || !isPackageManagerName(manager)) return undefined;
   index += 1;
 
+  // Scan the whole segment first: a redirect flag can appear after the script
+  // name (`npm run build --workspace=api`), so stopping at the first
+  // non-flag token would miss it.
+  if (tokens.slice(index).some(isWorkspaceRedirect)) return undefined;
+
   let explicitRun = false;
   for (; index < tokens.length; index += 1) {
     const token = tokens[index];
@@ -117,6 +147,13 @@ function classify(
   if (manager === 'npm') return undefined;
 
   return { script: candidate, manager, confidence: 'medium', raw };
+}
+
+/** True for `--filter`, `-C`, `--workspace=api` and friends. */
+function isWorkspaceRedirect(token: string): boolean {
+  if (!token.startsWith('-')) return false;
+  const name = token.split('=', 1)[0] ?? token;
+  return WORKSPACE_REDIRECT_FLAGS.has(name);
 }
 
 /** Whitespace tokenizer that keeps quoted segments together. */
