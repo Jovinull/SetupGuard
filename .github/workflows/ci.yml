@@ -55,9 +55,18 @@ jobs:
 
       - run: pnpm run test
 
-      # Dogfooding: the tool must be able to diagnose its own repository.
+      # Dogfooding: the tool must report READY on its own repository.
       # 0 = READY, 1 = findings, 3 = it could not finish checking.
-      - run: node packages/cli/dist/bin.js .
+      #
+      # Only on the runtime this repository recommends. `.nvmrc` pins Node 24
+      # while `engines.node` accepts >=22.13, so on the 22.13 leg SetupGuard
+      # correctly reports that the runner is not on the recommended version —
+      # a true finding about a real runner, not a defect in the repository.
+      # Deleting `.nvmrc` would make every leg green by removing a declaration
+      # that contributors actually use, which is precisely the drift this tool
+      # exists to catch. So the assertion is scoped instead.
+      - if: matrix.node == '24'
+        run: node packages/cli/dist/bin.js .
 
   audit:
     name: dependency audit
