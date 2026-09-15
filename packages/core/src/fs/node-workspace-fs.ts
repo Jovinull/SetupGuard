@@ -1,4 +1,5 @@
 import { promises as fs, type Dirent } from 'node:fs';
+import type { FileHandle } from 'node:fs/promises';
 import path from 'node:path';
 
 import {
@@ -13,6 +14,7 @@ import {
 const DEFAULT_MAX_FILE_BYTES = 2 * 1024 * 1024;
 const DEFAULT_MAX_DEPTH = 8;
 const DEFAULT_MAX_FILES = 5000;
+const READ_CHUNK_BYTES = 64 * 1024;
 
 export interface NodeWorkspaceFsOptions {
   /** Refuse to read files larger than this. Default 2 MiB. */
@@ -33,6 +35,14 @@ export interface NodeWorkspaceFsOptions {
  * link to `/etc/passwd`; `fs.stat` and `fs.readFile` follow it happily, and
  * without this check the contents of that file end up quoted in the report.
  * Repository content is untrusted input, and a symlink is content.
+ *
+ * **Out of scope:** a workspace being rewritten *while* it is analysed. There
+ * is a window between `realpath` and `open` in which the path could be swapped
+ * for a symlink, and hard links are not detectable at all. Both need local
+ * write access to the directory, which already grants direct read access, so
+ * neither is defended against — see the threat model in
+ * `Notes/09-seguranca-e-confiabilidade.md`. The size cap is the one guarantee
+ * that does hold under concurrent mutation.
  */
 export class NodeWorkspaceFs implements WorkspaceFs {
   readonly root: string;
@@ -108,14 +118,55 @@ export class NodeWorkspaceFs implements WorkspaceFs {
       throw new WorkspaceBoundaryError(relativePath);
     }
 
-    const stats = await fs.stat(real);
-    if (!stats.isFile()) {
-      throw new Error(`Not a regular file: ${relativePath}`);
+    const handle = await fs.open(real, 'r');
+    try {
+      const stats = await handle.stat();
+      if (!stats.isFile()) {
+        throw new Error(`Not a regular file: ${relativePath}`);
+      }
+      // `stat` gives an accurate size for the usual error, but it is only
+      // advisory: `readFile` reads to EOF, so a file that grows after the stat
+      // would still be read in full. The chunked read below is what actually
+      // enforces the cap, by refusing as soon as one byte too many arrives.
+      if (stats.size > this.#maxFileBytes) {
+        throw new FileTooLargeError(relativePath, stats.size, this.#maxFileBytes);
+      }
+      return await this.#readCapped(handle, relativePath);
+    } finally {
+      await handle.close();
     }
-    if (stats.size > this.#maxFileBytes) {
-      throw new FileTooLargeError(relativePath, stats.size, this.#maxFileBytes);
+  }
+
+  /**
+   * Read at most `maxFileBytes` bytes, rejecting as soon as the file proves
+   * larger.
+   *
+   * The final read is narrowed to `remaining + 1` rather than a whole chunk, so
+   * the reader never pulls more than one byte past the limit. That one byte is
+   * the cheapest possible proof of overflow; asking for a full chunk instead
+   * would make the promise "at most maxFileBytes" untrue by up to 64 KiB.
+   */
+  async #readCapped(handle: FileHandle, relativePath: string): Promise<string> {
+    const chunks: Buffer[] = [];
+    let total = 0;
+
+    for (;;) {
+      const remaining = this.#maxFileBytes - total;
+      const bytesToRead = Math.min(READ_CHUNK_BYTES, remaining + 1);
+      const buffer = Buffer.allocUnsafe(bytesToRead);
+      const { bytesRead } = await handle.read(buffer, 0, bytesToRead, null);
+      if (bytesRead === 0) break;
+
+      total += bytesRead;
+      if (total > this.#maxFileBytes) {
+        throw new FileTooLargeError(relativePath, total, this.#maxFileBytes);
+      }
+      chunks.push(buffer.subarray(0, bytesRead));
     }
-    return fs.readFile(real, 'utf8');
+
+    // Decoded once at the end, so a multi-byte character split across two
+    // chunks is still decoded correctly.
+    return Buffer.concat(chunks).toString('utf8');
   }
 
   async listDir(relativePath: string): Promise<string[]> {
@@ -159,6 +210,14 @@ export class NodeWorkspaceFs implements WorkspaceFs {
       } catch {
         return;
       }
+
+      // `fs.readdir` makes no ordering promise: it reflects the filesystem's
+      // own layout, which differs between ext4, APFS, NTFS and network mounts.
+      // Sorting here is what makes two runs of the same repository produce the
+      // same report — and, when `maxFiles` cuts the walk short, what makes the
+      // surviving subset the same everywhere. Compared by code unit rather than
+      // `localeCompare`, so the locale cannot change the result either.
+      entries.sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 
       for (const entry of entries) {
         if (files.length >= maxFiles) {
