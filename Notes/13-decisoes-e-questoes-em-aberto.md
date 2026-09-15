@@ -58,7 +58,7 @@ Tomadas durante a implementação da fundação em 2026-09-14. Cada uma está de
 - **Sanitização central cobre também caminhos de arquivo** (`Evidence.file`), segmento a segmento. Ficam de fora, deliberadamente: `checkId`, `code`, `title`, `category`, `level`, `status` (identificadores estruturais escolhidos pelo código do SetupGuard) e `Report.root` (o caminho que o usuário pediu, não conteúdo do repositório).
 - **`AbortSignal` no contexto** de adapters e checks, com timeout por check e por adapter.
 - **Monorepo:** pnpm workspaces com `packages/{core,adapter-node,cli,vscode}`; sem a pasta `adapters/*` separada. Todos os pacotes `"private": true`.
-- **Build:** `tsc -b` com project references, ESM `NodeNext`, sem bundler. Runtime mínimo Node >= 20.11.0.
+- **Build:** `tsc -b` com project references, ESM `NodeNext`, sem bundler. Runtime mínimo Node >= 22.13.0.
 - **Contratos TypeScript** de `Adapter`, `Check`, `Finding`, `CheckResult`, `Evidence` e `Report` definidos, com `schemaVersion: 1`.
 - **Status de check:** `pass`, `warning`, `error`, `skipped`, `not-applicable`, `inconclusive`, `internal-error`.
 - **Severidade:** `error`, `warning`, `info`. **Confiança:** `high`, `medium`, `low`.
@@ -101,7 +101,7 @@ Tomadas durante a implementação da fundação em 2026-09-14. Cada uma está de
 - arquitetura e segurança do SDK de plugins;
 - versionamento da API de adapters;
 - metas de cobertura e orçamento de performance (não há benchmark);
-- compatibilidade entre sistemas operacionais: o workflow de CI multiplataforma existe mas nunca rodou; só Linux foi verificado;
+- compatibilidade entre sistemas operacionais: com Node 24, Ubuntu, macOS e Windows passaram no commit `21b2b72`; com Node 20.11 as três pernas falharam antes de instalar (pnpm 11 exige Node >= 22.13; a correção foi subir o piso para Node 22.13, não rebaixar o pnpm — Node 20 está EOL desde 2026-04-30). Os testes de symlink continuam pulados no Windows, então essa fronteira segue não verificada lá;
 - cancelamento não cooperativo (um laço síncrono que ignore o `AbortSignal` não é interrompido);
 - redaction é baseada em forma: um segredo sem `=`, sem URL e sem prefixo de token passa;
 - biblioteca de schema/configuração, quando existir `.setupguard.yml`.

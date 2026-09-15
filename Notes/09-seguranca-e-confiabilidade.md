@@ -89,7 +89,7 @@ O produto pode precisar saber se uma variável existe ou testar uma conexão, ma
 
 > **Correção pós-QA.** A camada 1 sozinha era insuficiente, e a afirmação "um valor não pode vazar" era falsa. Três canais foram reproduzidos:
 >
-> 1. um comando documentado como `TOKEN=sg-doc-SECRET-9127 npm run missing` era citado literalmente em `message` e em `evidence.excerpt`;
+> 1. um comando documentado como `TOKEN=QA-FAKE-CREDENTIAL-0005 npm run missing` era citado literalmente em `message` e em `evidence.excerpt`;
 > 2. a mensagem nativa de `JSON.parse` **repete um trecho da entrada** — um `package.json` malformado começando por uma credencial punha a credencial no report;
 > 3. qualquer `Error.message` lançado de dentro de um check.
 
@@ -103,10 +103,20 @@ Ele fica em `packages/core/src/engine/run.ts`, depois de todos os checks rodarem
 
 O que é removido:
 
-- atribuições `NOME=valor` viram `NOME=***` (o nome é a metade útil e não secreta);
-- credenciais embutidas em URL (`postgres://user:pw@host`) viram `user:***@`;
-- tokens opacos longos precedidos de `bearer`/`token`/`api-key`;
-- caracteres de controle, que corromperiam o terminal.
+As regras são escritas contra a **classe** do problema, e a decisão é sempre do *nome* da chave, nunca do delimitador:
+
+| Forma | Regra |
+|---|---|
+| `NOME=valor` | sempre redigido — o lado direito de uma atribuição é um valor de ambiente |
+| `--flag=valor` e `--flag valor` | redigido quando o nome da flag tem forma de credencial |
+| `Chave: valor` e `chave:valor` | redigido quando a chave tem forma de credencial |
+| `user:senha@host` em URL | sempre redigido |
+| `Bearer <token>` solto | sempre redigido |
+| caracteres de controle | sempre removidos |
+
+"Forma de credencial" é decidida por `isSensitiveKey`, que quebra a chave em palavras (camelCase, kebab, snake, pontos) e testa contra uma lista curta — então `--api-key`, `apiKey`, `API_KEY` e `X-Api-Key` são todos cobertos por uma única entrada, enquanto `--keyword` continua intacto. Estender a cobertura é acrescentar uma palavra.
+
+> **Correção pós-QA (3ª rodada).** A versão anterior decidia pelo **delimitador**: recusava-se a tocar em qualquer coisa precedida de `-`, para não estragar `--filter=web`. Resultado: `--otp=123456` passava inteiro para `evidence.excerpt` e para `evidence.detail`, enquanto `OTP=123456` era redigido. Delimitador não carrega significado; nome carrega.
 
 O que passa por isso, e com que limite:
 
@@ -126,6 +136,39 @@ Mensagens nativas de parser **nunca** são serializadas: `describeJsonParseError
 Testes de segurança cobrem os quatro canais (Markdown, parser, symlink, dotenv) como reproduções, não como testes unitários do conserto.
 
 Não há telemetria de nenhum tipo. A política formal continua **Em aberto**, mas não há o que politicar enquanto nada é coletado.
+
+## Threat model
+
+Escrito explicitamente para que a documentação não prometa mais do que o código entrega.
+
+**Atacante considerado:** quem controla o *conteúdo do repositório* que você está diagnosticando — um pull request de terceiro, um repositório clonado de origem desconhecida, um template gerado.
+
+**Objetivo do atacante:** fazer o SetupGuard ler algo fora do workspace, ou colocar um segredo dentro do report (que vai para o terminal, para o JSON de CI e para o painel do editor).
+
+| Vetor | Situação |
+|---|---|
+| `..` no caminho | **Bloqueado** — guard léxico em `resolve()` |
+| Caminho absoluto | **Bloqueado** — mesmo guard |
+| Symlink de arquivo apontando para fora | **Bloqueado** — `realpath` + verificação da raiz real |
+| Symlink de diretório apontando para fora | **Bloqueado** — idem, e o walker nunca percorre symlink |
+| Cadeia de symlinks | **Bloqueado** — `realpath` resolve a cadeia inteira |
+| Arquivo gigante / bomba de leitura | **Limitado** — 2 MiB por arquivo, aferido no mesmo file handle da leitura |
+| Varredura infinita | **Limitado** — teto de arquivos e de profundidade, ambos reportados como lacuna |
+| Execução de código do projeto | **Impossível** — nenhum comando é executado em nenhum nível implementado |
+| Segredo em conteúdo do repositório | **Mitigado** — sanitização central; ver acima |
+| **Hardlink apontando para fora** | **NÃO bloqueado** — ver abaixo |
+
+### Hardlinks: limite conhecido e assumido
+
+Um hardlink não tem "alvo": ele é uma segunda entrada de diretório para o mesmo inode. `realpath` devolve o caminho de dentro do workspace, porque é isso que o caminho é. Não existe checagem portátil que distinga um hardlink malicioso de um legítimo:
+
+- `stat().nlink > 1` acusa qualquer arquivo com múltiplas entradas — e gerenciadores de pacote com store por hardlink (pnpm), caches de CI e filesystems com deduplicação produzem isso o tempo todo. Seria um falso positivo constante.
+- No Windows `nlink` frequentemente vem 1 mesmo quando há hardlinks.
+- Comparar `dev`/`ino` com a árvore inteira custaria uma varredura completa do sistema de arquivos.
+
+Como não há mitigação confiável e barata, **nenhuma foi implementada**: inventar uma proteção parcial seria pior do que declarar o limite.
+
+O que **contém** o risco na prática: Git não versiona hardlinks. Um repositório clonado não pode carregar um — o vetor exige acesso de escrita local ao diretório, e quem tem isso já pode simplesmente ler os arquivos diretamente. Por isso o limite é aceitável para o modelo de ameaça acima, e está documentado em vez de silenciado.
 
 ## Workspaces não confiáveis
 

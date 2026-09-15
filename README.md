@@ -58,8 +58,9 @@ no checks all exit 3, not 0.
 
 - run `build`, `test`, migrations, `docker compose up`, or any other command
   with side effects — not even to "verify" something;
-- read anything outside the directory you point it at, including through a
-  symlink committed in the repository;
+- follow a path out of the directory you point it at — `..`, an absolute path,
+  or a symlink committed in the repository. A hard link created locally is the
+  one gap, and it is documented in the threat model rather than half-guarded;
 - print the value of an environment variable or any other secret — every
   free-text field and every file path in a report is sanitised centrally before
   it is written or rendered (identifiers such as check ids and the workspace
@@ -87,15 +88,45 @@ pnpm install
 pnpm check      # lint + typecheck + test
 ```
 
-CI (`.github/workflows/ci.yml`) runs the same commands on Linux, macOS and
-Windows against Node 20.11 and 24, plus `pnpm audit`. It has not been executed
-yet — the repository has no remote.
+CI runs the same commands on Linux, macOS and Windows against Node 22.13 and 24,
+plus `pnpm audit`. See [Continuous integration](#continuous-integration) for
+what has actually been verified.
 
 Architectural decisions belong in [`Notes/`](Notes/README.md) — see
 [14-implementacao-v0.1.md](Notes/14-implementacao-v0.1.md) for what the current
 code actually implements, and
 [13-decisoes-e-questoes-em-aberto.md](Notes/13-decisoes-e-questoes-em-aberto.md)
 for what is still open.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs lint, typecheck, tests and a self-diagnosis on
+Ubuntu, macOS and Windows, against the lowest Node this project supports
+(22.13.0) and the current LTS (24), plus a separate dependency audit.
+
+Status, as of commit `21b2b72`:
+
+| Leg | Result |
+| --- | --- |
+| Ubuntu / macOS / Windows, Node 24 | passed |
+| Ubuntu / macOS / Windows, Node 20.11 | **failed** — that was the matrix at the time |
+| Audit | passed |
+
+The Node 20.11 legs never reached the test suite: the repository pinned
+pnpm 11.18, which requires Node >= 22.13, so `setup-node`'s pnpm cache step
+failed before installing anything.
+
+The fix was to raise the floor rather than downgrade pnpm. Node 20 reached end
+of life on 2026-04-30, and shipping support for a runtime that no longer gets
+security patches would contradict what this tool is for. `engines.node` is now
+`>=22.13.0` and the matrix tests `22.13.0` and `24`. None of that has been
+through CI yet.
+
+Two caveats that a green matrix will not remove:
+
+- the symlink-confinement tests skip themselves on Windows, where creating a
+  link needs elevation, so that boundary stays unverified there;
+- the current working tree carries 252 tests that have not run remotely.
 
 ## Licence
 

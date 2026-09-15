@@ -151,7 +151,7 @@ Metas de cobertura e orçamento de performance continuam **Em aberto**; ainda n�
 
 | Assunto | Decisão |
 |---|---|
-| Runtime mínimo | Node >= 20.11.0 |
+| Runtime mínimo | Node >= 22.13.0 |
 | Formato do monorepo | pnpm workspaces + `tsc -b` com project references |
 | Módulos | ESM, `NodeNext` |
 | Biblioteca de CLI | nenhuma; parser próprio (superfície pequena, contrato de exit code é o que importa) |

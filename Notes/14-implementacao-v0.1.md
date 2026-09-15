@@ -23,6 +23,18 @@ Primeira rodada:
 | "pipeline lint/typecheck/test passa" | `pnpm check` falhava antes de começar | corrigida no `pnpm-workspace.yaml` |
 | "`runCli` é função pura" | exagero | reformulada abaixo |
 
+Terceira rodada — auditoria adversarial encontrou o vazamento por outra forma de token:
+
+| Afirmação | Realidade | Situação |
+|---|---|---|
+| "nenhum valor pode vazar" | `--otp=123456` passava inteiro; a regra decidia pelo delimitador | regras reescritas por **nome** da chave |
+| script de outro workspace | `npm --prefix ./sub run build` virava `error` contra o manifesto raiz | referência descartada quando há flag de redirecionamento |
+| fake secrets nas fixtures | usavam prefixos de provedor reais, que disparam scanners de segredo | trocados por valores sinteticos inertes (`QA-FAKE-*`) |
+| "determinismo" | `walk()` não ordenava; era sorte do filesystem | `sort()` explícito, com teste |
+| múltiplos lockfiles | `package-lock.json` + `npm-shrinkwrap.json` acusado como dois gerenciadores | modelado por gerenciador |
+| `process.env` desestruturado | invisível ao scanner | detectado, inclusive multilinha |
+| builtins de framework | `import.meta.env.MODE` cobrado como não documentado | ambiência por forma de acesso |
+
 Segunda rodada — as correções da primeira estavam incompletas:
 
 | Afirmação | Realidade | Situação |
@@ -61,10 +73,10 @@ Diferenças em relação ao layout ilustrativo de
 
 | Assunto | Decisão | Por quê |
 |---|---|---|
-| Gerenciador do monorepo | pnpm workspaces | monorepo nativo, sem ferramenta extra de build |
+| Gerenciador do monorepo | pnpm 11 workspaces | monorepo nativo, sem ferramenta extra de build |
 | Build | `tsc -b` com project references | sem bundler; a saída é Node ESM legível |
 | Módulos | ESM, `module`/`moduleResolution` = `NodeNext` | imports relativos com `.js`, compatível com Node 20+ |
-| Runtime mínimo | Node >= 20.11.0 | LTS ativa na fundação |
+| Runtime mínimo | Node >= 22.13.0 | Node 20 saiu de suporte em 2026-04-30; oferecer um runtime sem patches de segurança contradiria o próprio produto |
 | Testes | Vitest 4.1.11+ | roda TypeScript direto do `src` via alias, sem build prévio; 4.1.11 é a primeira versão sem o advisory GHSA-82fw-gwwq-j7x9 |
 | Lint | ESLint 9 flat config + typescript-eslint (`recommendedTypeChecked`) | regras com tipo detectam erros reais |
 | Biblioteca de CLI | nenhuma; parser próprio | a superfície é pequena e o contrato de exit code importa mais que ergonomia |
@@ -85,9 +97,19 @@ allowBuilds:
 ```
 
 O esbuild (dependência do Vitest) baixa seu binário nativo em um postinstall. O
-pnpm 11 bloqueia **todo** comando até que esse script seja autorizado, e a chave
-correta é `allowBuilds` — `onlyBuiltDependencies` foi removida no pnpm 11. Sem
-isso, quem clonar o repositório não consegue rodar `pnpm check`.
+pnpm bloqueia **todo** comando até que esse script seja autorizado. Sem isso,
+quem clonar o repositório não consegue rodar `pnpm check`.
+
+O nome da chave depende da versão: `allowBuilds` no pnpm 11,
+`onlyBuiltDependencies` no pnpm 10.
+
+> **Correção pós-QA.** O piso de runtime e o gerenciador de pacotes estão
+> acoplados: pnpm 11 exige Node >= 22.13. Enquanto o projeto declarava
+> `>=20.11.0`, as três pernas de Node 20.11 do CI falhavam no passo de cache do
+> `setup-node`, antes de instalar qualquer coisa. A saída não foi rebaixar o
+> pnpm e sim subir o piso: Node 20 está EOL desde 2026-04-30, e sustentar um
+> runtime sem patches seria uma contradição num produto que se vende por
+> segurança e confiabilidade. Node 22 tem suporte até 2027-04-30.
 
 > **Correção pós-QA.** Era exatamente esse o estado: o arquivo tinha o
 > placeholder `esbuild: set this to true or false` que o próprio pnpm escreve, e
@@ -307,7 +329,7 @@ extrai só a posição.
 >
 > **Correção pós-QA (1ª).** A afirmação "um valor não pode vazar porque não há
 > como obtê-lo" era falsa. Três canais foram reproduzidos: (1) um comando documentado
-> `TOKEN=sg-doc-SECRET-9127 npm run missing` ia inteiro para `message` e
+> `TOKEN=QA-FAKE-CREDENTIAL-0005 npm run missing` ia inteiro para `message` e
 > `evidence.excerpt`; (2) a mensagem nativa de `JSON.parse` repete o início do
 > arquivo, então um `package.json` malformado começando por uma credencial punha
 > a credencial no report; (3) qualquer `Error.message` lançado de um check. A
@@ -472,7 +494,7 @@ existem — são o próximo marco.
 
 ## Testes
 
-Vitest, 179 testes em 13 arquivos, executando contra o `src` (sem build prévio).
+Vitest, 252 testes em 16 arquivos, executando contra o `src` (sem build prévio).
 
 Fixtures são **diretórios de projeto reais** em `fixtures/`, não mocks:
 
@@ -486,6 +508,7 @@ Fixtures são **diretórios de projeto reais** em `fixtures/`, não mocks:
 | `warnings-only` | sem lockfile, sem versão declarada → `WARNINGS` |
 | `secret-env` | `.env` com segredo, para provar que não vaza |
 | `monorepo-root` | pacote aninhado, para a fronteira de projeto |
+| `monorepo-scripts` | scripts e docs que apontam para outro workspace |
 | `empty-dir` | nada; nenhum adapter detectado → `INCOMPLETE` |
 
 Além das fixtures versionadas, alguns testes constroem workspaces temporários em
@@ -508,6 +531,20 @@ Os testes de symlink são pulados no Windows, onde criar links exige elevação 
 Developer Mode. Isso significa que uma matriz de CI verde **não** valida essa
 fronteira de segurança no Windows.
 
+### Testes adicionados após o terceiro QA
+
+- `packages/core/test/redact-adversarial.test.ts`: 27 formas de credencial que
+  **devem** ser redigidas e 15 comandos ordinários que **devem** sobreviver;
+  as três suítes novas somam 61 testes;
+- `packages/cli/test/leak-surfaces.test.ts`: workspace hostil com sete segredos
+  distintos, verificando JSON, saída humana e saída colorida — cada marcador é
+  único, então a falha diz qual canal vazou;
+- `packages/adapter-node/test/check-coverage.test.ts`: um caso por código de
+  finding que nenhuma outra suíte exercitava, mais a fixture `monorepo-scripts`;
+- determinismo do `walk`, incluindo qual subconjunto sobrevive ao truncamento;
+- desestruturação de `process.env`, inclusive multilinha, com negativos;
+- ambiência por forma de acesso (`import.meta.env.MODE` vs `process.env.MODE`).
+
 ### Testes adicionados após o segundo QA
 
 - `packages/core/test/aggregate.test.ts`: tabela com todas as combinações de
@@ -529,12 +566,29 @@ máquina de quem roda os testes. Há também um teste que usa o
 ## Integração contínua
 
 `.github/workflows/ci.yml` roda `lint`, `typecheck`, `test` e o auto-diagnóstico
-em uma matriz `ubuntu × macos × windows` por `node 20.11.0 × 24`, com
+em uma matriz `ubuntu × macos × windows` por `node 22.13.0 × 24`, com
 `pnpm install --frozen-lockfile` (que é o que prova que um clone limpo instala),
 mais um job de `pnpm audit`.
 
-O workflow foi escrito mas **não** executado: esta máquina é Linux e nada foi
-enviado a um remoto. O comportamento em macOS e Windows permanece não verificado.
+O workflow foi executado no commit publicado `21b2b72`:
+
+| Perna | Resultado |
+|---|---|
+| Ubuntu / macOS / Windows, Node 24 | passou |
+| Ubuntu / macOS / Windows, Node 20.11 | **falhou** (matriz da época) |
+| Audit | passou |
+
+As pernas de Node 20.11 nunca chegaram à suíte: o repositório fixava pnpm 11.18,
+que exige Node >= 22.13, então o passo de cache do `setup-node` falhava antes de
+instalar qualquer coisa.
+
+A correção foi subir o piso, não rebaixar o pnpm: `engines.node` passou a
+`>=22.13.0` na raiz e nos quatro pacotes, e a matriz testa agora `22.13.0` e
+`24`. Node 20 está EOL desde 2026-04-30. Nada disso passou pelo CI ainda.
+
+Duas ressalvas que uma matriz verde não remove: os testes de symlink se pulam no
+Windows (criar link exige elevação), e os 252 testes da working tree atual
+ainda não rodaram remotamente.
 
 ## Limitações conhecidas
 
@@ -552,7 +606,8 @@ enviado a um remoto. O comportamento em macOS e Windows permanece não verificad
 - Drift de documentação cobre só scripts; arquivos, caminhos e portas citados
   ainda não.
 - Sem cache, watcher ou execução incremental.
-- **Testado apenas em Linux.** O workflow multiplataforma existe mas nunca rodou.
+- **Node 24 verificado nos três sistemas.** Node 22.13, o novo piso, ainda não —
+  a matriz mudou depois da única execução. Ver a seção de integração contínua.
 - O cancelamento é cooperativo: `Promise.race` destrava o motor e o `AbortSignal`
   avisa o check, mas um laço síncrono que ignore o sinal não é interrompido.
 - A máscara de comentários não rastreia literais de expressão regular. Um `//`
@@ -561,9 +616,17 @@ enviado a um remoto. O comportamento em macOS e Windows permanece não verificad
   de strings quebraria a forma `process.env['NOME']`, cujo nome vive dentro de
   uma string.
 - A redaction é baseada em forma, não em conhecimento do que é segredo. Um valor
-  secreto escrito sem `=`, sem URL e sem prefixo de token passa.
+  passado por posição (`mycli deploy <token>`) ou atrás de uma flag curta
+  anônima (`-p senha`) não tem sinal para ser reconhecido e passa.
+- Hardlinks apontando para fora do workspace não são bloqueados; ver o threat
+  model em [09-seguranca-e-confiabilidade.md](09-seguranca-e-confiabilidade.md).
+- Blocos de código indentados com 4 espaços não são varridos pelo scanner de
+  documentação.
+- `run-s`, `npm-run-all` e wrappers como `cross-env` interrompem o parse de
+  referências de script (falso negativo deliberado).
 - `Report.root` não é sanitizado (é o caminho que o usuário passou).
 - Identificadores de check não são sanitizados; isso precisa mudar antes de
   aceitar adapters de terceiros.
 - As camadas de `.env` são uma heurística de framework, não um contrato do Node.
-- O workflow de CI nunca rodou em runners reais.
+- O CI rodou uma vez, no commit `21b2b72`; as correções desta rodada e os 252
+  testes atuais ainda não passaram por ele.
