@@ -42,7 +42,13 @@ export function exitCodeFor(report: Report, failOn: FailOn): ExitCode {
         ? report.summary.errors + report.summary.warnings
         : report.summary.errors;
 
-  if (failing > 0) return EXIT_CODES.FINDINGS;
+  // `INCOMPLETE` is checked first, not after the findings. The aggregator only
+  // reaches that state when the findings do not tell the whole story — most
+  // importantly when `.setupguard.yml` could not be applied, where the run
+  // produced default-configuration findings that the repository may well have
+  // asked to re-level. Reporting those as code 1 would contradict the readiness
+  // printed right next to it.
   if (report.readiness === 'INCOMPLETE') return EXIT_CODES.INCOMPLETE;
+  if (failing > 0) return EXIT_CODES.FINDINGS;
   return EXIT_CODES.OK;
 }

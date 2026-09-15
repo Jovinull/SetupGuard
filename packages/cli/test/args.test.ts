@@ -112,6 +112,15 @@ describe('exitCodeFor', () => {
     );
   });
 
+  it('reports an incomplete diagnosis even when default-run findings exist', () => {
+    // A broken .setupguard.yml makes readiness INCOMPLETE while the run still
+    // produced findings with default settings. Exit 1 there would contradict
+    // the readiness printed beside it.
+    expect(exitCodeFor(report({ errors: 3, readiness: 'INCOMPLETE' }), 'error')).toBe(
+      EXIT_CODES.INCOMPLETE,
+    );
+  });
+
   it('does not let --fail-on never hide an incomplete diagnosis', () => {
     // `never` tolerates findings the user has seen. It must not turn "nothing
     // was checked" into a green CI job.
