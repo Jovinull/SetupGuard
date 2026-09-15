@@ -1,5 +1,6 @@
-import type { WorkspaceFs } from '@setupguard/core';
+import { offsetToPosition, type WorkspaceFs } from '@setupguard/core';
 
+import type { EnvAccessForm } from './dotenv.js';
 import type { FactGap } from './gaps.js';
 import { maskComments } from './mask-comments.js';
 import { isInsideNestedProject } from './workspace-boundary.js';
@@ -10,6 +11,12 @@ export interface EnvUsage {
   readonly file: string;
   /** 1-based. */
   readonly line: number;
+  /**
+   * Which accessor was used. Needed because a name can be ambient through one
+   * form and project-owned through another: `import.meta.env.MODE` is a Vite
+   * builtin, `process.env.MODE` is not.
+   */
+  readonly form: EnvAccessForm;
 }
 
 /*
@@ -31,14 +38,52 @@ export const SOURCE_EXTENSIONS: readonly string[] = [
   '.vue',
 ];
 
-const PATTERNS: readonly RegExp[] = [
+interface AccessPattern {
+  readonly pattern: RegExp;
+  readonly form: EnvAccessForm;
+  /** Destructuring patterns capture a whole binding list, not a single name. */
+  readonly destructuring?: boolean;
+}
+
+const PATTERNS: readonly AccessPattern[] = [
   // process.env.NAME
-  /process\.env\.([A-Za-z_][A-Za-z0-9_]*)/g,
+  { pattern: /process\.env\.([A-Za-z_][A-Za-z0-9_]*)/g, form: 'process.env' },
   // process.env['NAME'] / process.env["NAME"]
-  /process\.env\[\s*['"`]([A-Za-z_][A-Za-z0-9_]*)['"`]\s*\]/g,
+  {
+    pattern: /process\.env\[\s*['"`]([A-Za-z_][A-Za-z0-9_]*)['"`]\s*\]/g,
+    form: 'process.env',
+  },
   // import.meta.env.NAME (Vite)
-  /import\.meta\.env\.([A-Za-z_][A-Za-z0-9_]*)/g,
+  { pattern: /import\.meta\.env\.([A-Za-z_][A-Za-z0-9_]*)/g, form: 'import.meta.env' },
+  // const { NAME, OTHER: alias, THIRD = 'x' } = process.env
+  {
+    pattern:
+      /(?:const|let|var)\s*\{([^{}]*)\}\s*=\s*process\.env(?![.[\w])/g,
+    form: 'process.env',
+    destructuring: true,
+  },
+  {
+    pattern:
+      /(?:const|let|var)\s*\{([^{}]*)\}\s*=\s*import\.meta\.env(?![.[\w])/g,
+    form: 'import.meta.env',
+    destructuring: true,
+  },
 ];
+
+/**
+ * Names bound by a destructuring pattern.
+ *
+ * Handles `{ A, B: alias, C = 'default' }` by keeping only the property name —
+ * the part before `:` or `=`. Anything else (rest elements, nested patterns,
+ * computed keys) is skipped rather than guessed at: this is a scanner, not a
+ * JavaScript parser.
+ */
+export function destructuredNames(bindingList: string): string[] {
+  return bindingList
+    .split(',')
+    .map((entry) => entry.split(/[:=]/, 1)[0]?.trim() ?? '')
+    .filter((name) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(name));
+}
 
 export interface ScanEnvUsageOptions {
   readonly maxFiles?: number;
@@ -109,18 +154,21 @@ export async function scanEnvUsage(
       continue;
     }
 
-    const lines = maskComments(text).split(/\r?\n/);
-    for (const [index, line] of lines.entries()) {
-      for (const pattern of PATTERNS) {
-        pattern.lastIndex = 0;
-        let match: RegExpExecArray | null;
-        while ((match = pattern.exec(line)) !== null) {
-          const name = match[1];
-          if (!name) continue;
-          const dedupeKey = `${name}::${file}::${index}`;
+    // Matched over the whole masked file rather than line by line: a
+    // destructuring pattern is routinely spread across several lines.
+    const masked = maskComments(text);
+    for (const { pattern, form, destructuring } of PATTERNS) {
+      pattern.lastIndex = 0;
+      let match: RegExpExecArray | null;
+      while ((match = pattern.exec(masked)) !== null) {
+        const captured = match[1];
+        if (!captured) continue;
+        const line = offsetToPosition(masked, match.index).line;
+        for (const name of destructuring ? destructuredNames(captured) : [captured]) {
+          const dedupeKey = `${name}::${file}::${line}`;
           if (seen.has(dedupeKey)) continue;
           seen.add(dedupeKey);
-          usages.push({ name, file, line: index + 1 });
+          usages.push({ name, file, line, form });
         }
       }
     }
