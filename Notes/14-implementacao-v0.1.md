@@ -157,7 +157,8 @@ A ordem **é** a precedência, e corresponde linha a linha a
 `packages/core/src/engine/aggregate.ts`:
 
 ```text
-1. algum finding error         -> BLOCKED
+0. configuração inválida       -> INCOMPLETE   (runDiagnosis)
+1. algum finding error         -> BLOCKED      (aggregateReadiness)
 2. algum check internal-error  -> INCOMPLETE
 3. algum check inconclusive    -> INCOMPLETE
 4. algum finding warning       -> WARNINGS
@@ -165,8 +166,10 @@ A ordem **é** a precedência, e corresponde linha a linha a
 6. caso contrário              -> READY
 ```
 
-`BLOCKED` vence tudo: um finding `error` é evidência coletada. Todo o resto cede
-a `INCOMPLETE`, inclusive `warning`.
+`BLOCKED` vence todo o resto: um finding `error` é evidência coletada. `warning`
+cede a `INCOMPLETE`. A única coisa acima de `BLOCKED` é a linha 0 — se a
+configuração não foi aplicada, o `BLOCKED` produzido com padrões pode ser
+exatamente o achado que ela rebaixaria.
 
 `READY` exige **evidência positiva e ausência de lacunas**:
 `summary.conclusive > 0` e nenhum `inconclusive`/`internal-error`. `skipped` e
@@ -494,7 +497,7 @@ existem — são o próximo marco.
 
 ## Testes
 
-Vitest, 366 testes em 20 arquivos, executando contra o `src` (sem build prévio).
+Vitest, 368 testes em 20 arquivos, executando contra o `src` (sem build prévio).
 
 Fixtures são **diretórios de projeto reais** em `fixtures/`, não mocks:
 
@@ -573,7 +576,7 @@ mais um job de `pnpm audit`.
 O workflow roda em `ubuntu × macos × windows` por `node 22.13.0 × 24`, com
 `pnpm install --frozen-lockfile`, mais um job separado de `pnpm audit`.
 
-**As sete jobs passam.** 366 testes, três sistemas operacionais, duas versões
+**As sete jobs passam.** 368 testes, três sistemas operacionais, duas versões
 de Node. Histórico das execuções abaixo.
 
 Histórico das execuções:

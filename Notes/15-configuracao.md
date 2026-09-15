@@ -112,6 +112,18 @@ As duas exclusões são deliberadas:
   deixar de detectar um pacote aninhado só pode *criar* falso positivo,
   atribuindo o código do filho à raiz.
 
+**Forma canônica obrigatória.** Um padrão é aceito exatamente como deve ser
+escrito: sem prefixo `./`, sem separador `\`, sem segmento vazio ou `.`, sem
+barra final, sem espaços em volta, sem caractere de controle. Escrever de outra
+forma é erro, e a mensagem diz qual é a forma canônica.
+
+A razão é paridade: reescrever em silêncio fazia `docs` e `./docs` colidirem
+como duplicata **depois** da normalização, enquanto o `uniqueItems` do JSON
+Schema via duas strings diferentes. Unicidade pós-normalização não é expressável
+em JSON Schema; exigir a forma canônica torna as duas iguais. E como
+`.setupguard.yml` é commitado e compartilhado entre plataformas, `docs\generated`
+é um erro de digitação venha de onde vier — não uma variante regional.
+
 **Dialeto suportado:**
 
 | Padrão | Casa com |
@@ -222,7 +234,7 @@ que a configuração rebaixaria. Dizer "incompleto" é a única afirmação hone
 | `config/invalid-severity` | severity fora de `error`/`warning`/`off` |
 | `config/invalid-env-name` | nome que não parece variável de ambiente |
 | `config/duplicate-entry` | entrada repetida em `env.optional` ou `ignore` |
-| `config/invalid-ignore-pattern` | absoluto, `../`, negação ou sintaxe não suportada |
+| `config/invalid-ignore-pattern` | absoluto, `../`, negação, sintaxe não suportada, caractere de controle, ou forma não canônica |
 | `config/misnamed-file` | existe `.setupguard.yaml` (ou similar) e nenhum `.setupguard.yml` |
 
 Cada diagnóstico aponta arquivo, linha, coluna e o campo (`checks.node/x.severity`)
@@ -281,20 +293,28 @@ Divergir exige alterar a constante e não regenerar — e isso quebra o CI.
 
 ### Até onde o schema valida
 
-Um teste de **paridade** roda o mesmo corpus de configurações contra o schema e
-contra o loader, e exige que os dois concordem. O schema expressa: tipos, chaves
-permitidas, `version`, severidades, nomes de variável, **duplicatas**
-(`uniqueItems`) e a gramática de `ignore` — inclusive `../`, caminho absoluto,
-negação e sintaxe não suportada.
+Um teste de **paridade** roda um corpus de 38 configurações contra o schema e
+contra o loader, e exige que os dois cheguem ao mesmo veredito. O schema
+expressa: tipos, chaves permitidas, `version`, severidades, nomes de variável,
+duplicatas (`uniqueItems`) e a gramática completa de `ignore` — `../`, caminho
+absoluto (Unix e Windows, inclusive atrás de espaço), negação, sintaxe não
+suportada, caractere de controle e **forma não canônica**.
 
-Há **uma** divergência, deliberada e registrada no próprio teste: **ids de
-check**. Quais existem depende dos adapters carregados em tempo de execução, e
-enumerá-los no schema publicado pelo core faria o core conhecer o ecossistema.
-Para esse campo o schema é **estrutural** e o loader é a autoridade semântica.
+A gramática de `ignore` está escrita duas vezes: como asserções nomeadas em
+`IGNORE_PATTERN_RULES` (que geram o `pattern` do schema) e como código em
+`normalizeIgnorePattern`. As duas precisam aceitar o mesmo conjunto, e o corpus
+é o que prova isso.
 
-Isso importa para o editor: tudo o mais que o schema aceitar, o SetupGuard
-aceita. Só um id de check inexistente pode parecer válido no editor e produzir
-`INCOMPLETE` na execução.
+Há **uma** divergência conhecida, registrada no próprio teste com o motivo:
+**ids de check**. Quais existem depende dos adapters carregados em tempo de
+execução, e enumerá-los no schema publicado pelo core faria o core conhecer o
+ecossistema. Para esse campo o schema é **estrutural**; o loader é a autoridade.
+
+O que isso significa no editor: de tudo que o schema aceita, só um id de check
+inexistente pode parecer válido e ainda assim produzir `INCOMPLETE` na execução.
+A garantia é sobre o corpus testado, não sobre uma prova de equivalência — um
+corpus finito não demonstra paridade total, e qualquer regra nova precisa entrar
+nos dois lados e no corpus.
 
 Ainda não é distribuído por URL. Serve como contrato verificável e base para
 autocomplete no editor mais adiante.

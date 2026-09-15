@@ -134,7 +134,7 @@ for what is still open.
 Ubuntu, macOS and Windows, against the lowest Node this project supports
 (22.13.0) and the current LTS (24), plus a separate dependency audit.
 
-**All seven jobs pass** — 366 tests on three operating systems and two Node
+**All seven jobs pass** — 368 tests on three operating systems and two Node
 versions.
 
 One thing a green matrix still does not prove:

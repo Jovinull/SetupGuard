@@ -185,13 +185,19 @@ A experiência proposta usa:
 **Decidido em v0.1** — quatro estados, com esta precedência exata (a ordem importa e corresponde linha a linha ao agregador em `packages/core/src/engine/aggregate.ts`):
 
 ```text
-1. algum finding error                -> BLOCKED
-2. algum check internal-error         -> INCOMPLETE
-3. algum check inconclusive           -> INCOMPLETE
-4. algum finding warning              -> WARNINGS
-5. nenhum check conclusivo            -> INCOMPLETE
-6. caso contrário                     -> READY
+0. .setupguard.yml não pôde ser aplicado -> INCOMPLETE
+1. algum finding error                   -> BLOCKED
+2. algum check internal-error            -> INCOMPLETE
+3. algum check inconclusive              -> INCOMPLETE
+4. algum finding warning                 -> WARNINGS
+5. nenhum check conclusivo               -> INCOMPLETE
+6. caso contrário                        -> READY
 ```
+
+A linha 0 é aplicada por `runDiagnosis`, antes de consultar o agregador; as
+linhas 1 a 6 são `aggregateReadiness`. A separação é proposital: o agregador
+raciocina sobre resultados de check, e uma configuração quebrada não é um
+resultado de check — ver [15-configuracao.md](15-configuracao.md).
 
 `BLOCKED` vence tudo: um finding `error` é evidência que **foi** coletada, então um diagnóstico parcial que já encontrou um bloqueio continua bloqueado. Todo o resto cede a `INCOMPLETE` — inclusive `warning`, porque um aviso não pode mascarar que parte do diagnóstico não aconteceu.
 
