@@ -70,11 +70,12 @@ export { sanitizeEvidence, sanitizeFinding, sanitizeResult } from './engine/sani
 
 export { reportToJson } from './report/serialize.js';
 
-export { offsetToPosition, lineAt, excerpt, type TextPosition } from './util/text-position.js';
+export { offsetToPosition, excerpt, type TextPosition } from './util/text-position.js';
 export { locateJsonKey, type JsonLocation } from './util/json-source.js';
 export { closestMatch, editDistance } from './util/similar.js';
 export {
   redact,
+  isSensitiveKey,
   redactOptional,
   redactPath,
   redactPathOptional,
