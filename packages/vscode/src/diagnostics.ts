@@ -1,4 +1,10 @@
-import { allFindings, type ConfigDiagnostic, type Finding, type Report, type Severity } from '@setupguard/core';
+import {
+  allFindings,
+  type ConfigDiagnostic,
+  type Finding,
+  type Report,
+  type Severity,
+} from '@setupguard/core';
 
 /**
  * Editor-facing projection of a report.
@@ -9,7 +15,8 @@ import { allFindings, type ConfigDiagnostic, type Finding, type Report, type Sev
  * extension itself becomes a thin shell that converts these records into
  * `vscode.Diagnostic` objects and publishes them.
  *
- * See `Notes/16-extensao-vscode.md` for how the extension host consumes this.
+ * See `Notes/16-extensao-vscode-implementada.md` for how the extension host
+ * consumes this.
  */
 
 /** Mirrors `vscode.DiagnosticSeverity`. */
