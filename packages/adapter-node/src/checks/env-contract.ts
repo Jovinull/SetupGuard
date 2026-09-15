@@ -22,6 +22,11 @@ import { describeGaps, gapsFor, hasGap } from '../facts/gaps.js';
  *
  * Only variable *names* are ever handled; values are dropped at parse time, so
  * no finding can leak a secret (`Notes/09-seguranca-e-confiabilidade.md`).
+ *
+ * `env.optional` from `.setupguard.yml` removes a name from consideration
+ * entirely: the project has stated the variable is not required, so neither its
+ * absence nor its absence from the template is a finding. Declaring a variable
+ * optional never gives SetupGuard access to its value.
  */
 export const envContractCheck: Check<NodeFacts> = {
   id: 'node/env-contract',
@@ -35,7 +40,7 @@ export const envContractCheck: Check<NodeFacts> = {
     // A failed template read or a truncated source scan removes the facts this
     // check looks for; without this the gap would be hidden as not-applicable.
     hasGap(facts.gaps, 'env-template', 'source-scan'),
-  run(facts) {
+  run(facts, context) {
     // An incomplete source scan cannot prove that every variable is documented,
     // so it must not be reported as a clean result.
     const gaps = gapsFor(facts.gaps, 'source-scan', 'env-template');
@@ -45,9 +50,12 @@ export const envContractCheck: Check<NodeFacts> = {
 
     const example = facts.envExampleFile;
     const usages = groupUsagesByName(facts.envUsages);
-    // A name is only the project's responsibility when no platform provides it.
-    // Ambience depends on the access form, so the check asks per usage.
+    const optional = context.config.optionalEnvVars;
+    // A name is only the project's responsibility when no platform provides it
+    // and the project has not declared it optional. Ambience depends on the
+    // access form, so the check asks per usage.
     const usedNames = [...usages.entries()]
+      .filter(([name]) => !optional.has(name))
       .filter(([name, sites]) => sites.some((site) => !isAmbientEnvVar(name, site.form)))
       .map(([name]) => name);
 
@@ -133,13 +141,15 @@ export const envLocalFileCheck: Check<NodeFacts> = {
 
     const usages = groupUsagesByName(facts.envUsages);
     const localFiles = facts.envLocalFiles;
+    const optional = context.config.optionalEnvVars;
 
     if (localFiles.length === 0) {
       // Configuration exported into the shell is a legitimate setup, so an
       // absent .env is only worth reporting when the process environment does
-      // not already provide the documented variables.
+      // not already provide the documented variables. Optional ones never
+      // count towards that.
       const unprovided = example.entries.filter(
-        (entry) => !context.environment.hasEnvVar(entry.key),
+        (entry) => !optional.has(entry.key) && !context.environment.hasEnvVar(entry.key),
       );
       if (unprovided.length === 0) return pass();
 
@@ -163,6 +173,7 @@ export const envLocalFileCheck: Check<NodeFacts> = {
     const localPaths = localFiles.map((file) => file.path).join(', ');
 
     for (const entry of example.entries) {
+      if (optional.has(entry.key)) continue;
       const state = facts.envLocalKeys.get(entry.key) ?? 'absent';
       if (state === 'set') continue;
       if (context.environment.hasEnvVar(entry.key)) continue;
