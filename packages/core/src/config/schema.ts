@@ -44,6 +44,19 @@ export const CONFIG_CHECK_KEYS: readonly string[] = ['severity'];
  */
 export const ENV_VAR_NAME_PATTERN = '^[A-Za-z_][A-Za-z0-9_]*$';
 
+/**
+ * An ignore pattern, as far as a regular expression can express it.
+ *
+ * Rejects, in order: a leading `!` (negation), a leading `/` or a Windows drive
+ * root (absolute), a `..` segment anywhere (traversal), the characters of
+ * constructs this dialect does not implement, and a blank string. It is the
+ * same grammar `normalizeIgnorePattern` enforces, written once more in a form
+ * an editor can check — see `Notes/15-configuracao.md` on where the schema is
+ * structural and the loader remains the authority.
+ */
+export const IGNORE_PATTERN_PATTERN =
+  '^(?![!/])(?![A-Za-z]:[\\\\/])(?!.*(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$))(?!.*[\\[\\]{}()!+@])\\s*[^\\s].*$';
+
 /** JSON Schema for `.setupguard.yml`, generated from the constants above. */
 export function configJsonSchema(): Record<string, unknown> {
   return {
@@ -61,7 +74,8 @@ export function configJsonSchema(): Record<string, unknown> {
         const: CONFIG_VERSION,
       },
       checks: {
-        description: 'Severity overrides, keyed by check id.',
+        description:
+          'Severity overrides, keyed by check id. Which ids exist depends on the adapters loaded, so the schema accepts any key and the loader rejects unknown ones.',
         type: 'object',
         additionalProperties: {
           type: 'object',
@@ -84,6 +98,7 @@ export function configJsonSchema(): Record<string, unknown> {
             description:
               'Variables the project works without. Names only; SetupGuard never reads a value.',
             type: 'array',
+            uniqueItems: true,
             items: { type: 'string', pattern: ENV_VAR_NAME_PATTERN },
           },
         },
@@ -92,7 +107,8 @@ export function configJsonSchema(): Record<string, unknown> {
         description:
           'Workspace-relative glob patterns excluded from the source and documentation scans. Structural files such as the root package.json are never hidden.',
         type: 'array',
-        items: { type: 'string', minLength: 1 },
+        uniqueItems: true,
+        items: { type: 'string', minLength: 1, pattern: IGNORE_PATTERN_PATTERN },
       },
     },
   };

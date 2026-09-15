@@ -14,7 +14,7 @@
       "const": 1
     },
     "checks": {
-      "description": "Severity overrides, keyed by check id.",
+      "description": "Severity overrides, keyed by check id. Which ids exist depends on the adapters loaded, so the schema accepts any key and the loader rejects unknown ones.",
       "type": "object",
       "additionalProperties": {
         "type": "object",
@@ -39,6 +39,7 @@
         "optional": {
           "description": "Variables the project works without. Names only; SetupGuard never reads a value.",
           "type": "array",
+          "uniqueItems": true,
           "items": {
             "type": "string",
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
@@ -49,9 +50,11 @@
     "ignore": {
       "description": "Workspace-relative glob patterns excluded from the source and documentation scans. Structural files such as the root package.json are never hidden.",
       "type": "array",
+      "uniqueItems": true,
       "items": {
         "type": "string",
-        "minLength": 1
+        "minLength": 1,
+        "pattern": "^(?![!/])(?![A-Za-z]:[\\\\/])(?!.*(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$))(?!.*[\\[\\]{}()!+@])\\s*[^\\s].*$"
       }
     }
   }
