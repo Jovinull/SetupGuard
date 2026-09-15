@@ -1,0 +1,10 @@
+# Everything is excluded first, then the few things the extension actually
+# needs are added back. An allow-list is the only version of this file that
+# cannot leak a fixture, a note or a source tree by forgetting a rule.
+**
+
+!out/extension.cjs
+!package.json
+!README.md
+!LICENSE
+!CHANGELOG.md

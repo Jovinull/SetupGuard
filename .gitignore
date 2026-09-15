@@ -5,6 +5,11 @@ node_modules/
 dist/
 *.tsbuildinfo
 
+# extension bundle and package: both are produced by `pnpm --filter setupguard
+# run package` and neither belongs in the history
+packages/vscode/out/
+*.vsix
+
 # test / tooling caches
 coverage/
 .vitest/
