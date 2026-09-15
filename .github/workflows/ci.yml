@@ -67,6 +67,43 @@ jobs:
       - if: matrix.node == '24'
         run: node packages/cli/dist/bin.js .
 
+  extension:
+    name: vsix package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '24'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+
+      # A VSIX that stops building is a release that cannot happen, and the
+      # failure would otherwise only show up by hand.
+      - run: pnpm --filter setupguard run package
+
+      # The VSIX is what a user installs, so its contents are part of the
+      # contract. Sources, tests, fixtures and Notes must never be in it, and an
+      # exact list is the only check that catches a file nobody thought about.
+      - name: verify the vsix contents
+        run: |
+          cd packages/vscode
+          unzip -Z1 setupguard-0.1.0.vsix | sort > actual.txt
+          cat actual.txt
+          cat > expected.txt <<'EOF'
+          [Content_Types].xml
+          extension/changelog.md
+          extension/LICENSE.txt
+          extension/out/extension.cjs
+          extension/package.json
+          extension/readme.md
+          extension.vsixmanifest
+          EOF
+          diff -u expected.txt actual.txt
+
   audit:
     name: dependency audit
     runs-on: ubuntu-latest
