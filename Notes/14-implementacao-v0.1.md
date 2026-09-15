@@ -570,25 +570,44 @@ em uma matriz `ubuntu × macos × windows` por `node 22.13.0 × 24`, com
 `pnpm install --frozen-lockfile` (que é o que prova que um clone limpo instala),
 mais um job de `pnpm audit`.
 
-O workflow foi executado no commit publicado `21b2b72`:
+O workflow roda em `ubuntu × macos × windows` por `node 22.13.0 × 24`, com
+`pnpm install --frozen-lockfile`, mais um job separado de `pnpm audit`.
 
-| Perna | Resultado |
+**Estado no commit `7b52b63`: as sete jobs passam.** 252 testes, três sistemas
+operacionais, duas versões de Node.
+
+Histórico das execuções:
+
+| Commit | Resultado |
 |---|---|
-| Ubuntu / macOS / Windows, Node 24 | passou |
-| Ubuntu / macOS / Windows, Node 20.11 | **falhou** (matriz da época) |
-| Audit | passou |
+| `21b2b72` | Node 24 passou nos três sistemas; Node 20.11 falhou nos três |
+| `f880217` | Node 24 passou; Node 22.13 falhou só no auto-diagnóstico |
+| `7b52b63` | tudo verde |
 
-As pernas de Node 20.11 nunca chegaram à suíte: o repositório fixava pnpm 11.18,
-que exige Node >= 22.13, então o passo de cache do `setup-node` falhava antes de
-instalar qualquer coisa.
+A falha em `21b2b72` foi de configuração: o repositório fixava pnpm 11.18, que
+exige Node >= 22.13, então o passo de cache do `setup-node` quebrava antes de
+instalar qualquer coisa. A correção foi **subir o piso**, não rebaixar o pnpm —
+Node 20 está EOL desde 2026-04-30.
 
-A correção foi subir o piso, não rebaixar o pnpm: `engines.node` passou a
-`>=22.13.0` na raiz e nos quatro pacotes, e a matriz testa agora `22.13.0` e
-`24`. Node 20 está EOL desde 2026-04-30. Nada disso passou pelo CI ainda.
+A falha em `f880217` foi mais interessante: install, lint, typecheck e os 252
+testes passaram nas três plataformas com Node 22.13, e só o auto-diagnóstico
+falhou, com o próprio SetupGuard reportando
 
-Duas ressalvas que uma matriz verde não remove: os testes de symlink se pulam no
-Windows (criar link exige elevação), e os 252 testes da working tree atual
-ainda não rodaram remotamente.
+```
+error  Node.js 22.13.0 does not satisfy "24" from .nvmrc
+```
+
+O achado estava **correto**: o runner de fato não estava na versão que o
+`.nvmrc` recomenda. Apagar o `.nvmrc` deixaria tudo verde ao custo de remover
+uma declaração que contribuidores usam — exatamente o drift que esta ferramenta
+existe para pegar. O passo de auto-diagnóstico foi restrito ao runtime
+recomendado em vez disso.
+
+Duas ressalvas que a matriz verde não remove:
+
+- os testes de symlink se pulam no Windows (criar link exige elevação), então
+  essa fronteira segue não verificada lá;
+- o auto-diagnóstico só roda na perna de Node 24.
 
 ## Limitações conhecidas
 
@@ -606,8 +625,8 @@ ainda não rodaram remotamente.
 - Drift de documentação cobre só scripts; arquivos, caminhos e portas citados
   ainda não.
 - Sem cache, watcher ou execução incremental.
-- **Node 24 verificado nos três sistemas.** Node 22.13, o novo piso, ainda não —
-  a matriz mudou depois da única execução. Ver a seção de integração contínua.
+- **Node 22.13 e 24 verificados em Ubuntu, macOS e Windows.** A fronteira de
+  symlink continua não verificada no Windows, onde os testes se pulam.
 - O cancelamento é cooperativo: `Promise.race` destrava o motor e o `AbortSignal`
   avisa o check, mas um laço síncrono que ignore o sinal não é interrompido.
 - A máscara de comentários não rastreia literais de expressão regular. Um `//`
@@ -628,5 +647,4 @@ ainda não rodaram remotamente.
 - Identificadores de check não são sanitizados; isso precisa mudar antes de
   aceitar adapters de terceiros.
 - As camadas de `.env` são uma heurística de framework, não um contrato do Node.
-- O CI rodou uma vez, no commit `21b2b72`; as correções desta rodada e os 252
-  testes atuais ainda não passaram por ele.
+- O auto-diagnóstico do CI só roda na perna de Node 24 (ver integração contínua).

@@ -104,29 +104,21 @@ for what is still open.
 Ubuntu, macOS and Windows, against the lowest Node this project supports
 (22.13.0) and the current LTS (24), plus a separate dependency audit.
 
-Status, as of commit `21b2b72`:
+Status, as of commit `7b52b63`: **all seven jobs pass** — 252 tests on three
+operating systems and two Node versions.
 
-| Leg | Result |
-| --- | --- |
-| Ubuntu / macOS / Windows, Node 24 | passed |
-| Ubuntu / macOS / Windows, Node 20.11 | **failed** — that was the matrix at the time |
-| Audit | passed |
-
-The Node 20.11 legs never reached the test suite: the repository pinned
-pnpm 11.18, which requires Node >= 22.13, so `setup-node`'s pnpm cache step
-failed before installing anything.
-
-The fix was to raise the floor rather than downgrade pnpm. Node 20 reached end
-of life on 2026-04-30, and shipping support for a runtime that no longer gets
-security patches would contradict what this tool is for. `engines.node` is now
-`>=22.13.0` and the matrix tests `22.13.0` and `24`. None of that has been
-through CI yet.
-
-Two caveats that a green matrix will not remove:
+Two things a green matrix still does not prove:
 
 - the symlink-confinement tests skip themselves on Windows, where creating a
   link needs elevation, so that boundary stays unverified there;
-- the current working tree carries 252 tests that have not run remotely.
+- the self-diagnosis step runs only on Node 24, the version `.nvmrc`
+  recommends. On 22.13 SetupGuard correctly reports that the runner is not on
+  the recommended runtime — a true finding about the runner, not a defect in
+  the repository.
+
+Node 20 is deliberately not supported: it reached end of life on 2026-04-30,
+and shipping support for a runtime without security patches would contradict
+what this tool is for.
 
 ## Licence
 
