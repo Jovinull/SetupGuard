@@ -13,6 +13,7 @@
     "build": "tsc -b",
     "typecheck": "tsc -b && tsc -p tsconfig.check.json",
     "clean": "tsc -b --clean",
+    "schema": "tsc -b && node scripts/generate-schema.mjs",
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
