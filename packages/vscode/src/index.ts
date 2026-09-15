@@ -25,3 +25,12 @@ export {
   type SessionOptions,
   type SessionState,
 } from './session.js';
+
+export {
+  summarise,
+  toStatusBarState,
+  SHOW_REPORT_COMMAND,
+  type AggregateSummary,
+  type StatusBarState,
+  type StatusInput,
+} from './status.js';
