@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { nodeAdapter } from '@setupguard/adapter-node';
 import { AdapterRegistry, NodeWorkspaceFs, runDiagnosis, type Report } from '@setupguard/core';
 import { fixture, stubEnvironment } from '@setupguard/testing';
-import { DIAGNOSTIC_SEVERITY, toDiagnostics } from '@setupguard/vscode';
+import { DIAGNOSTIC_SEVERITY, toDiagnostics } from 'setupguard';
 
 async function reportFor(name: string): Promise<Report> {
   return runDiagnosis({

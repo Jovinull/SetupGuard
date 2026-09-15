@@ -1,12 +1,64 @@
 {
-  "name": "@setupguard/vscode",
+  "name": "setupguard",
+  "displayName": "SetupGuard",
   "version": "0.1.0",
   "private": true,
-  "description": "Presentation layer that maps SetupGuard reports onto editor diagnostics. The extension host wiring is not part of v0.1.",
+  "publisher": "jovinull",
+  "description": "Tells you whether this repository is actually ready to develop in — and what is missing when it is not. Reads files, runs nothing.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Jovinull/SetupGuard.git",
+    "directory": "packages/vscode"
+  },
+  "categories": [
+    "Linters",
+    "Programming Languages",
+    "Other"
+  ],
+  "keywords": [
+    "onboarding",
+    "diagnostics",
+    "environment",
+    "dotenv",
+    "monorepo"
+  ],
   "type": "module",
   "engines": {
+    "vscode": "^1.90.0",
     "node": ">=22.13.0"
+  },
+  "extensionKind": [
+    "workspace"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true,
+      "description": "SetupGuard reads repository files and inspects the local machine. It never runs project scripts, package managers, build tools or containers, so opening an untrusted folder stays a read-only operation. The verification levels that would execute project code are not implemented; when they are, they will require a trusted workspace."
+    },
+    "virtualWorkspaces": {
+      "supported": false,
+      "description": "SetupGuard reads the workspace through the local filesystem."
+    }
+  },
+  "main": "./out/extension.cjs",
+  "activationEvents": [
+    "workspaceContains:package.json",
+    "workspaceContains:.setupguard.yml"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "setupguard.runDiagnosis",
+        "title": "Run Diagnosis",
+        "category": "SetupGuard"
+      },
+      {
+        "command": "setupguard.showReport",
+        "title": "Show Report",
+        "category": "SetupGuard"
+      }
+    ]
   },
   "exports": {
     ".": {
@@ -14,18 +66,17 @@
       "default": "./dist/index.js"
     }
   },
-  "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": [
-    "dist"
-  ],
   "scripts": {
-    "build": "tsc -b"
-  },
-  "dependencies": {
-    "@setupguard/core": "workspace:*"
+    "build": "tsc -b",
+    "bundle": "node scripts/bundle.mjs",
+    "package": "pnpm run bundle && vsce package --no-dependencies --out setupguard-0.1.0.vsix"
   },
   "devDependencies": {
-    "@setupguard/adapter-node": "workspace:*"
+    "@setupguard/adapter-node": "workspace:*",
+    "@setupguard/core": "workspace:*",
+    "@types/vscode": "~1.90.0",
+    "@vscode/vsce": "4.0.0",
+    "esbuild": "^0.28.2"
   }
 }

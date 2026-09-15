@@ -6,6 +6,10 @@
     "declaration": false,
     "declarationMap": false,
     "noEmit": true,
+    "types": [
+      "node",
+      "vscode"
+    ],
     "baseUrl": ".",
     "paths": {
       "@setupguard/core": [
@@ -17,7 +21,7 @@
       "@setupguard/cli": [
         "./packages/cli/src/index.ts"
       ],
-      "@setupguard/vscode": [
+      "setupguard": [
         "./packages/vscode/src/index.ts"
       ],
       "@setupguard/testing": [

@@ -1,11 +1,24 @@
 packages:
   - 'packages/*'
 
-# esbuild (a Vitest dependency) fetches its native binary in a postinstall
-# script. pnpm blocks every command until that script is explicitly allowed,
-# so a clone that does not set this cannot run `pnpm check`.
+# Postinstall scripts, decided explicitly. pnpm blocks every command until each
+# one is either allowed or refused, so a clone that does not set these cannot
+# run `pnpm check`.
 #
 # The key is `allowBuilds` because this repository is pinned to pnpm 11;
 # pnpm 10 spells the same setting `onlyBuiltDependencies`.
 allowBuilds:
+  # esbuild (Vitest, and the extension bundler) fetches its native binary.
   esbuild: true
+  # @vscode/vsce ships a signing helper. Signing only happens when publishing to
+  # the Marketplace, which this repository does not do, so the script is refused
+  # rather than trusted.
+  '@vscode/vsce-sign': false
+
+# pnpm holds back packages published very recently. @vscode/vsce 4.0.0 is
+# pinned exactly and is a development-only tool: it produces a local .vsix and
+# never runs in CI or at run time. 4.x is also the first line that dropped the
+# deprecated native `keytar` dependency, which is why an older release is not
+# used instead.
+minimumReleaseAgeExclude:
+  - '@vscode/vsce@4.0.0'

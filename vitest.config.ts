@@ -12,7 +12,7 @@ export default defineConfig({
       '@setupguard/core': resolve('./packages/core/src/index.ts'),
       '@setupguard/adapter-node': resolve('./packages/adapter-node/src/index.ts'),
       '@setupguard/cli': resolve('./packages/cli/src/index.ts'),
-      '@setupguard/vscode': resolve('./packages/vscode/src/index.ts'),
+      setupguard: resolve('./packages/vscode/src/index.ts'),
       '@setupguard/testing': resolve('./testing/index.ts'),
     },
   },
