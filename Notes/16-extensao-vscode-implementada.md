@@ -223,6 +223,29 @@ versionado, não ao `settings.json` de uma pessoa. Duas fontes de verdade sobre 
 mesma decisão produziriam diagnósticos diferentes na mesma máquina de duas
 pessoas, que é o problema que o SetupGuard existe para eliminar.
 
+## O que a extensão consome do core
+
+Nenhuma API nova foi adicionada ao `core` ou ao `adapter-node` para este marco.
+A extensão usa exatamente o que a CLI já usava, mais os nomes de arquivo que a
+configuração já expunha:
+
+| Export | Onde | Para quê |
+|---|---|---|
+| `runDiagnosis` | `extension.ts` | executar um diagnóstico |
+| `loadConfig` | `extension.ts` | uma passagem de configuração por execução |
+| `AdapterRegistry`, `nodeAdapter` | `extension.ts` | o mesmo registro da CLI |
+| `NodeWorkspaceFs` | `extension.ts` | raiz confinada por pasta |
+| `NodeEnvironmentProbe` | `extension.ts` | nível `environment` |
+| `describeError` | `extension.ts` | toda mensagem de erro exibida |
+| `allFindings` | `diagnostics.ts` | achatar os achados |
+| `CONFIG_FILE_NAME`, `MISNAMED_CONFIG_FILES` | `watch-patterns.ts` | o que observar |
+| `DEFAULT_IGNORED_DIRS` | `watch-patterns.ts` | o que descartar |
+| `Report`, `Finding`, `Severity`, `Readiness`, `ConfigDiagnostic` | vários | tipos |
+
+A única API que a extensão gostaria de ter e não tem é um `AbortSignal` em
+`loadConfig`; hoje o cancelamento só chega ao `runDiagnosis`. A leitura de
+configuração é um arquivo pequeno, então na prática não é um problema.
+
 ## Empacotamento
 
 - **esbuild** gera `out/extension.cjs`: CJS porque o Extension Host carrega o
