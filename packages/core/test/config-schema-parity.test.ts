@@ -5,7 +5,13 @@ import path from 'node:path';
 import { parse } from 'yaml';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { CONFIG_FILE_NAME, NodeWorkspaceFs, configJsonSchema, loadConfig } from '@setupguard/core';
+import {
+  CONFIG_FILE_NAME,
+  NodeWorkspaceFs,
+  configJsonSchema,
+  loadConfig,
+  normalizeIgnorePattern,
+} from '@setupguard/core';
 
 /**
  * Parity between the published JSON Schema and the loader.
@@ -183,6 +189,14 @@ const CASES: readonly Case[] = [
   // A pattern is one path, never several lines.
   { name: 'ignore with a newline', yaml: 'version: 1\nignore:\n  - "docs\\nprivate"\n', valid: false },
   { name: 'ignore with a tab', yaml: 'version: 1\nignore:\n  - "docs\\tprivate"\n', valid: false },
+
+  // `.` and `..` are forbidden *segments*; a longer run of dots is an ordinary
+  // file name. The schema used to demand a character that was neither a dot nor
+  // a separator, which was stricter than the rule it was meant to mirror.
+  { name: 'ignore triple dot', yaml: 'version: 1\nignore:\n  - "..."\n', valid: true },
+  { name: 'ignore quadruple dot', yaml: 'version: 1\nignore:\n  - "...."\n', valid: true },
+  { name: 'ignore dots around a space', yaml: 'version: 1\nignore:\n  - ". ."\n', valid: true },
+  { name: 'ignore name with an inner space', yaml: 'version: 1\nignore:\n  - "my docs"\n', valid: true },
   {
     name: 'unknown check id',
     yaml: 'version: 1\nchecks:\n  node/nope:\n    severity: off\n',
@@ -217,6 +231,46 @@ describe('schema and loader agree', () => {
       expect(bySchema, 'schema').toBe(testCase.valid);
     });
   }
+});
+
+describe('schema and loader agree on every short string', () => {
+  it('has no divergence across an exhaustive corpus', () => {
+    // A finite hand-written corpus proves the cases someone thought of. This
+    // enumerates every string of length 1 to 4 over an alphabet chosen to hit
+    // each rule — separators, dots, wildcards, negation, whitespace and a
+    // Windows drive root — and requires the two sides to agree on all of them.
+    // It is what caught `...` being accepted by the loader and rejected by the
+    // schema.
+    const pattern = new RegExp(
+      (configJsonSchema()['properties'] as Record<string, Record<string, Record<string, string>>>)[
+        'ignore'
+      ]?.['items']?.['pattern'] ?? '',
+    );
+    const alphabet = ['a', '.', '/', '\\', '*', '!', ' ', 'C', ':'];
+
+    const schemaOnly: string[] = [];
+    const loaderOnly: string[] = [];
+    let checked = 0;
+
+    const walk = (prefix: string, depth: number): void => {
+      if (prefix !== '') {
+        checked += 1;
+        const bySchema = pattern.test(prefix);
+        const byLoader = normalizeIgnorePattern(prefix).error === undefined;
+        if (bySchema && !byLoader) schemaOnly.push(prefix);
+        if (byLoader && !bySchema) loaderOnly.push(prefix);
+      }
+      if (depth === 0) return;
+      for (const character of alphabet) walk(prefix + character, depth - 1);
+    };
+    walk('', 4);
+
+    expect(checked).toBe(7380);
+    // The dangerous direction: an editor calls it valid, the run rejects it.
+    expect(schemaOnly, 'schema accepts, loader rejects').toEqual([]);
+    // The annoying direction: an editor underlines a pattern that works.
+    expect(loaderOnly, 'loader accepts, schema rejects').toEqual([]);
+  });
 });
 
 describe('the mini validator is itself exercised', () => {
