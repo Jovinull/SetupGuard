@@ -6,6 +6,10 @@
  * lifecycle, the status bar derivation, the report rendering and the watch
  * list. They are the layer where the decisions live, and they are testable in
  * plain Node.
+ *
+ * `src/extension.ts` is the extension host entry point declared in
+ * `package.json`. It is deliberately not re-exported here: importing it outside
+ * an Extension Host would fail on the `vscode` module.
  */
 
 export {
