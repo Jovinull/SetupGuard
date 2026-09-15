@@ -193,8 +193,8 @@ describe('valid configuration', () => {
     expect(config.checks.get('node/env-contract')).toBe('off');
   });
 
-  it('normalises ignore patterns deterministically', async () => {
-    const first = await withConfig('version: 1\nignore:\n  - "./b/**"\n  - a\n');
+  it('orders ignore patterns deterministically', async () => {
+    const first = await withConfig('version: 1\nignore:\n  - "b/**"\n  - a\n');
     const second = await withConfig('version: 1\nignore:\n  - a\n  - "b/**"\n');
 
     expect(first.ignore).toEqual(second.ignore);

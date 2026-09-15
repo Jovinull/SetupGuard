@@ -148,6 +148,41 @@ const CASES: readonly Case[] = [
   { name: 'ignore negation', yaml: 'version: 1\nignore:\n  - "!keep"\n', valid: false },
   { name: 'ignore braces', yaml: 'version: 1\nignore:\n  - "a/{b,c}"\n', valid: false },
   { name: 'ignore blank', yaml: 'version: 1\nignore:\n  - "   "\n', valid: false },
+
+  // Non-canonical spellings. Each one used to be silently rewritten by the
+  // loader while the schema saw the literal string, which is how `docs` and
+  // `./docs` could pass `uniqueItems` and then collide as duplicates.
+  { name: 'ignore dot', yaml: 'version: 1\nignore:\n  - "."\n', valid: false },
+  { name: 'ignore dot slash', yaml: 'version: 1\nignore:\n  - "./"\n', valid: false },
+  { name: 'ignore dot prefix', yaml: 'version: 1\nignore:\n  - "./docs"\n', valid: false },
+  { name: 'ignore trailing slash', yaml: 'version: 1\nignore:\n  - "docs/"\n', valid: false },
+  { name: 'ignore empty segment', yaml: 'version: 1\nignore:\n  - "docs//generated"\n', valid: false },
+  { name: 'ignore dot segment', yaml: 'version: 1\nignore:\n  - "docs/./generated"\n', valid: false },
+  { name: 'ignore backslash separator', yaml: 'version: 1\nignore:\n  - "docs\\\\generated"\n', valid: false },
+  { name: 'ignore surrounding spaces', yaml: 'version: 1\nignore:\n  - "  docs  "\n', valid: false },
+  {
+    name: 'ignore absolute windows behind a space',
+    yaml: 'version: 1\nignore:\n  - " C:\\\\Windows"\n',
+    valid: false,
+  },
+
+  // Duplicates that only collide after normalisation. Rejecting the
+  // non-canonical spelling is what keeps `uniqueItems` equivalent to the
+  // loader's own uniqueness check.
+  {
+    name: 'ignore duplicate via dot prefix',
+    yaml: 'version: 1\nignore:\n  - docs\n  - "./docs"\n',
+    valid: false,
+  },
+  {
+    name: 'ignore duplicate via separators',
+    yaml: 'version: 1\nignore:\n  - "docs/generated"\n  - "docs\\\\generated"\n',
+    valid: false,
+  },
+
+  // A pattern is one path, never several lines.
+  { name: 'ignore with a newline', yaml: 'version: 1\nignore:\n  - "docs\\nprivate"\n', valid: false },
+  { name: 'ignore with a tab', yaml: 'version: 1\nignore:\n  - "docs\\tprivate"\n', valid: false },
   {
     name: 'unknown check id',
     yaml: 'version: 1\nchecks:\n  node/nope:\n    severity: off\n',

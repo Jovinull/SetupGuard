@@ -26,18 +26,43 @@ afterEach(async () => {
 });
 
 describe('normalizeIgnorePattern', () => {
-  it('accepts and normalises relative patterns', () => {
-    expect(normalizeIgnorePattern('examples').pattern).toBe('examples');
-    expect(normalizeIgnorePattern('./docs/generated/**').pattern).toBe('docs/generated/**');
-    expect(normalizeIgnorePattern('docs//generated').pattern).toBe('docs/generated');
-    expect(normalizeIgnorePattern('  spaced  ').pattern).toBe('spaced');
+  it('accepts a canonical relative pattern', () => {
+    for (const pattern of ['examples', 'docs/generated/**', 'docs/*.md', '.env', 'build?']) {
+      expect(normalizeIgnorePattern(pattern), pattern).toEqual({ pattern });
+    }
   });
 
-  it('normalises Windows separators to one form', () => {
-    // Walk output is always POSIX, so a pattern written on Windows has to be
-    // folded into the same shape or it would silently never match.
-    expect(normalizeIgnorePattern('docs\\generated\\**').pattern).toBe('docs/generated/**');
-    expect(normalizeIgnorePattern('examples\\demo.js').pattern).toBe('examples/demo.js');
+  it('rejects a non-canonical spelling and names the canonical one', () => {
+    // Quietly rewriting these made `docs` and `./docs` collide as duplicates
+    // after normalisation, while the JSON Schema saw two different strings.
+    // One spelling, enforced on both sides.
+    const cases: readonly [string, string][] = [
+      ['./docs/generated/**', 'docs/generated/**'],
+      ['docs//generated', 'docs/generated'],
+      ['  spaced  ', 'spaced'],
+      ['docs/', 'docs'],
+      ['docs/./generated', 'docs/generated'],
+      // `.setupguard.yml` is committed and shared across platforms, so a
+      // backslash is a mistake whoever writes it.
+      ['docs\\generated\\**', 'docs/generated/**'],
+      ['examples\\demo.js', 'examples/demo.js'],
+    ];
+
+    for (const [raw, canonical] of cases) {
+      expect(normalizeIgnorePattern(raw), raw).toEqual({ error: 'not-canonical', canonical });
+    }
+  });
+
+  it('rejects control characters, so a pattern is always a single path', () => {
+    expect(normalizeIgnorePattern('docs\nprivate').error).toBe('control-characters');
+    expect(normalizeIgnorePattern('docs\tprivate').error).toBe('control-characters');
+  });
+
+  it('sees through whitespace to an absolute Windows path', () => {
+    // The guard used to test the raw string while the rest of the function
+    // worked on the trimmed one, so a leading space walked past it.
+    expect(normalizeIgnorePattern(' C:\\Windows').error).toBe('absolute');
+    expect(normalizeIgnorePattern('  /etc/passwd  ').error).toBe('absolute');
   });
 
   it('rejects anything that could leave the workspace', () => {
