@@ -45,17 +45,41 @@ export const CONFIG_CHECK_KEYS: readonly string[] = ['severity'];
 export const ENV_VAR_NAME_PATTERN = '^[A-Za-z_][A-Za-z0-9_]*$';
 
 /**
- * An ignore pattern, as far as a regular expression can express it.
+ * The grammar of an ignore pattern, as a list of named regular-expression
+ * assertions.
  *
- * Rejects, in order: a leading `!` (negation), a leading `/` or a Windows drive
- * root (absolute), a `..` segment anywhere (traversal), the characters of
- * constructs this dialect does not implement, and a blank string. It is the
- * same grammar `normalizeIgnorePattern` enforces, written once more in a form
- * an editor can check — see `Notes/15-configuracao.md` on where the schema is
- * structural and the loader remains the authority.
+ * Written out rule by rule rather than as one opaque expression, because this
+ * is the half of the contract an editor enforces and a reader has to be able to
+ * check it against `normalizeIgnorePattern`, which enforces the other half.
+ * The two must accept the same set of strings.
  */
-export const IGNORE_PATTERN_PATTERN =
-  '^(?![!/])(?![A-Za-z]:[\\\\/])(?!.*(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$))(?!.*[\\[\\]{}()!+@])\\s*[^\\s].*$';
+const IGNORE_PATTERN_RULES: readonly string[] = [
+  // No negation.
+  '(?![!])',
+  // No control characters: a pattern is one path, never several lines.
+  '(?![\\s\\S]*[\\u0000-\\u001F\\u007F])',
+  // No absolute path, POSIX or Windows.
+  '(?![/])',
+  '(?![A-Za-z]:[/])',
+  // Backslash is not a separator here; the canonical spelling uses `/`.
+  '(?![^]*\\\\)',
+  // Constructs this dialect does not implement: braces, classes, extglob.
+  '(?![^]*[\\[\\]{}()!+@])',
+  // No `..` segment anywhere.
+  '(?![^]*(?:^|/)\\.\\.(?:/|$))',
+  // Canonical: no `./` prefix, no `.` segment, no empty segment, no trailing `/`.
+  '(?![^]*(?:^|/)\\.(?:/|$))',
+  '(?![^]*//)',
+  '(?![^]*/$)',
+  // At least one character that is not a separator or a dot.
+  '(?=[^]*[^./\\s])',
+];
+
+/**
+ * An ignore pattern. Equivalent to {@link normalizeIgnorePattern}'s acceptance
+ * set, which a parity test verifies over a corpus.
+ */
+export const IGNORE_PATTERN_PATTERN = `^${IGNORE_PATTERN_RULES.join('')}\\S(?:[^]*\\S)?$`;
 
 /** JSON Schema for `.setupguard.yml`, generated from the constants above. */
 export function configJsonSchema(): Record<string, unknown> {
