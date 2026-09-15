@@ -55,16 +55,15 @@ jobs:
 
       - run: pnpm run test
 
-      # Dogfooding: the tool must report READY on its own repository.
-      # 0 = READY, 1 = findings, 3 = it could not finish checking.
-      #
-      # Only on the runtime this repository recommends. `.nvmrc` pins Node 24
-      # while `engines.node` accepts >=22.13, so on the 22.13 leg SetupGuard
-      # correctly reports that the runner is not on the recommended version —
-      # a true finding about a real runner, not a defect in the repository.
-      # Deleting `.nvmrc` would make every leg green by removing a declaration
-      # that contributors actually use, which is precisely the drift this tool
-      # exists to catch. So the assertion is scoped instead.
+      # Every supported runtime must prove that the built CLI starts and can
+      # diagnose the repository. Static checks are independent of the runner's
+      # own Node version, so this assertion belongs on every matrix leg.
+      - run: node packages/cli/dist/bin.js . --level static
+
+      # The full diagnosis also checks the local environment. `.nvmrc` pins
+      # Node 24 while `engines.node` accepts >=22.13, so a Node 22.13 runner is
+      # correctly BLOCKED by the runtime check. Run this assertion only where
+      # the runner matches the repository's recommended development runtime.
       - if: matrix.node == '24'
         run: node packages/cli/dist/bin.js .
 
