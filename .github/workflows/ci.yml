@@ -152,4 +152,11 @@ jobs:
           node-version: '24'
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+
+      # `audit.ignore` in pnpm-workspace.yaml has no expiry of its own. This
+      # fails the job once an exception passes its review date, or when one is
+      # added without a recorded justification.
+      - name: audit exceptions are justified and not overdue
+        run: node scripts/check-audit-exceptions.mjs
+
       - run: pnpm audit
