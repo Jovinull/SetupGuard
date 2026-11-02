@@ -18,7 +18,8 @@ import { fileURLToPath } from 'node:url';
  * must look again: check whether a compatible fix now exists, and either
  * remove the exception or renew it with a new date and fresh evidence.
  *
- * SETUPGUARD_AUDIT_TODAY=YYYY-MM-DD overrides the date, for testing the check.
+ * `--today=YYYY-MM-DD` overrides the date, for testing the check. An argument,
+ * not an environment variable: the override is not configuration.
  */
 const EXCEPTIONS = {
   'GHSA-g3hv-75wg-m249': {
@@ -47,8 +48,9 @@ if (workspace.auditConfig !== undefined) {
   fail(['pnpm-workspace.yaml: use audit.ignore, not the deprecated auditConfig']);
 }
 
-const today = process.env.SETUPGUARD_AUDIT_TODAY ?? new Date().toISOString().slice(0, 10);
-if (!/^\d{4}-\d{2}-\d{2}$/.test(today)) fail([`SETUPGUARD_AUDIT_TODAY is not a YYYY-MM-DD date: ${today}`]);
+const todayArg = process.argv.slice(2).find((arg) => arg.startsWith('--today='));
+const today = todayArg ? todayArg.slice('--today='.length) : new Date().toISOString().slice(0, 10);
+if (!/^\d{4}-\d{2}-\d{2}$/.test(today)) fail([`--today is not a YYYY-MM-DD date: ${today}`]);
 
 const problems = [];
 for (const id of ignored) {
