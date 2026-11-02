@@ -4,10 +4,11 @@ Este documento descreve **o que a Action faz hoje**, por que foi feita assim e
 qual evidência existe. Onde divergir de [08-github-action.md](08-github-action.md),
 vale este.
 
-Estado em 2026-11-02: implementada, testada localmente e validada contra a API
-real do GitHub em pull requests públicos. **Sem tag de release**, fora do
-GitHub Marketplace, e **ainda sem execução no próprio GitHub Actions** (exige
-push, que depende do mantenedor).
+Estado em 2026-11-02: implementada; testada localmente; validada contra a API
+real do GitHub em pull requests públicos; e **executada no GitHub Actions** no
+próprio PR #1 deste repositório (caso positivo, `GITHUB_TOKEN` real). **Sem tag
+de release** e fora do GitHub Marketplace. O que ainda não foi provado está
+listado ao fim.
 
 ## Decisões
 
@@ -77,8 +78,18 @@ check os leia.
 ### O que é regressão
 
 Identidade de um achado = `checkId + code + message`. **Linha não entra**
-(mover um parágrafo não cria problema) e **severidade não entra** (uma
-configuração que promove um aviso antigo a erro não criou o problema).
+(mover um parágrafo não cria problema). **Severidade não entra na identidade,
+mas é comparada** depois que duas ocorrências são casadas: se a base tinha o
+problema com severidade **menor**, foi o PR que o elevou, e o achado conta
+como novo na severidade nova, marcado `escalatedFrom` ("raised to error" na
+anotação). Severidade reduzida continua preexistente.
+
+> **Correção (revisão do PR).** A primeira versão ignorava a severidade por
+> completo. O motor dá a mesma mensagem para `pnpm dev` (forma implícita →
+> aviso) e `pnpm run dev` (explícita → erro), então um PR que reescrevia um
+> aviso antigo como erro levava o repositório de `WARNINGS` a `BLOCKED` e o
+> job **passava**. Reproduzido com a fixture `severity-raised` antes da
+> correção; coberto por testes de aceitação e unitários.
 
 Com múltiplas ocorrências, só o excedente é novo, e as ocorrências cuja
 evidência (arquivo + trecho) bate com a base são casadas primeiro.
@@ -122,12 +133,14 @@ O output `result` distingue os dois.
 
 ## Evidência
 
-### Testes (locais, Windows, Node 24)
+### Testes (locais, Windows, Node 24; e na matriz do CI)
+
+613 testes no repositório (162 do pacote da Action).
 
 - `acceptance.test.ts`: os sete casos da missão sobre `fixtures/pull-requests/*`
   (saudável, script removido, variável nova, problema preexistente com linha
   movida, conteúdo hostil, API indisponível, arquivos irrelevantes), mais
-  rename/remoção, checkout head, checkout desconhecido, PR desatualizado,
+  severidade elevada pelo PR, rename/remoção, checkout head, checkout desconhecido, PR desatualizado,
   `pull_request_target`, sem token, >3000 arquivos, paginação (250 arquivos,
   3 páginas), seis caminhos hostis, determinismo, `push`, diretório sem
   projeto, `path` fora do workspace, limite de varredura e seu remédio. A API
@@ -176,20 +189,70 @@ não tem script `dev`. A frase foi reescrita; o check não foi afrouxado. CLI
 (estático e completo) e a Action em modo `push` sobre o repositório dão
 `READY`/`pass`.
 
-### O que ainda não foi provado
+### O que está provado e o que não está
 
-- execução no GitHub Actions de verdade (runner aceitando `node24`, anotações
-  renderizadas no diff, summary renderizado, PR de fork neste repositório);
-- comportamento com `GITHUB_TOKEN` real (a validação foi anônima);
+Provado no GitHub Actions (PR #1, execuções `8d14be5` e `5d2250c`):
+
+- o runner aceita `node24` e executa `packages/github-action/dist/index.cjs`
+  via `action.yml`; o job `github action bundle` prova, na mesma execução, que
+  esse arquivo é idêntico ao reconstruído a partir das fontes;
+- chamadas reais à API com o `GITHUB_TOKEN` (só leitura), paginação real,
+  base correta;
+- um PR sem regressões passa.
+
+Provado localmente com a API real (ver "Demonstração" abaixo): um PR que
+introduz um problema falha (exit 1), e uma análise incompleta não passa.
+
+**Não provado ainda:**
+
+- o caso negativo **no próprio GitHub Actions** (anotação de erro renderizada no
+  diff, job vermelho por regressão): exige um PR com uma regressão de verdade,
+  e este trabalho só tem autorização para enviar commits ao `feat/github-action`;
+- PR vindo de **fork** neste repositório (aprovação de primeira contribuição,
+  token só leitura). Nota: aqui o workflow usa `uses: ./`, então o código da
+  Action que roda num PR é o do próprio PR — um fork pode alterá-lo. Roda com
+  token só leitura e sem segredos, a mesma exposição do `ci.yml`, que já executa
+  código do PR. Consumidores que fixam `Jovinull/SetupGuard@<sha>` não têm isso;
 - fronteira de symlink no Windows (como no resto do projeto).
+
+## Limitações atuais
+
+- só nível `static`;
+- checkout precisa ser o padrão (merge commit) ou o head do PR;
+- PR com mais de 3000 arquivos → `incomplete` (limite do endpoint); orçamento
+  de 400 requisições por execução;
+- repositórios que excedem os limites de varredura do motor (50 arquivos em
+  `docs/`, profundidade 8) → `incomplete` até configurar `ignore:`;
+- custo de requisições: arquivos em projetos aninhados são consultados na base
+  mesmo sendo descartados depois (64 requisições para 118 arquivos neste PR);
+- symlink alterado e lido diretamente → `incomplete`;
+- a Action confia que a árvore de trabalho é o commit em checkout: um passo
+  anterior do workflow que altere arquivos altera o que é analisado;
+- falso positivo conhecido do motor: `cd` entre blocos de documentação.
+
+## Bugs corrigidos neste PR
+
+- motor: escrita em `process.env` tratada como leitura (Express);
+- Action: severidade elevada pelo PR classificada como preexistente;
+- Action: relato de `incomplete` sem dizer qual check nem por quê (Vite);
+- build: bundle dependia de `dist/` compilado (falha do CI em `2cf8751`);
+- docs: README disparava o auto-diagnóstico (clone limpo).
+
+## Futuro (não implementado)
+
+- tags de release (`v0.x.y` imutável + major móvel) e Marketplace, que exige
+  um repositório de distribuição sem workflows;
+- excluir projetos aninhados dentro do `walk` (menos requisições);
+- várias raízes por job; seguir `cd` na documentação;
+- canal privado de segurança e e-mail de suporte (dependem do mantenedor).
 
 ## Histórico de execuções no GitHub
 
 | Commit | Resultado |
 |---|---|
 | `2cf8751` (PR #1) | matriz 6/6 e VSIX verdes; **`repository readiness` verde** (primeira execução real da Action, sobre o próprio PR); job do bundle falhou; audit falhou |
-
 | `8d14be5` (PR #1) | 9 de 10 verdes: matriz 6/6, VSIX, **bundle** e `repository readiness`; só o audit falhou (preexistente, ver abaixo) |
+| `5d2250c` (PR #1) | idem: 9 de 10; só o audit |
 
 Evidência da execução real em `8d14be5`, com `GITHUB_TOKEN` (permissões
 `Contents: read`, `PullRequests: read`, `Metadata: read`): 118 arquivos
@@ -213,7 +276,41 @@ Corrigido em `94af336`: o script agora aponta os pacotes do workspace para o
 `src/` TypeScript, então o bundle não depende do estado do build (mesmos bytes
 com ou sem `dist/`). Reproduzido em clone limpo na ordem exata do job.
 
-O audit falhou com 18 advisories (1 low, 10 moderate, 7 high) em dependências
-de desenvolvimento (`eslint → minimatch`, `vitest → vite`). É preexistente: o
-lockfile de `main` (`c7807e7`) dá o mesmo resultado. São advisories publicados
-depois da última execução verde, em 2026-09-15, e não estão relacionados a este PR.
+O audit falhou com 18 advisories (1 low, 10 moderate, 7 high), todos em
+ferramentas de desenvolvimento. `pnpm audit --prod` não reporta nenhum: as
+dependências de execução (`yaml`, `semver`) e os bundles estão limpos. Era
+preexistente: o lockfile de `main` (`c7807e7`) dá o mesmo resultado.
+
+## Dependências e auditoria (revisão do PR)
+
+Resolvidos 17 dos 18, sem upgrade major de nada declarado e sem override:
+
+| Advisory | Antes → depois | Como |
+|---|---|---|
+| `@vitest/mocker` (2) | 4.1.11 → 4.1.12 | `vitest ^4.1.12` (patch) |
+| `vite` (6), `source-map-js` (1) | 8.3.0 → 8.3.5; 1.2.1 → 1.2.2 | `vite ^8.3.5` declarado na raiz: é peer dependency do Vitest, que o pnpm fixa na resolução de peers e não atualiza sozinho |
+| `brace-expansion` (6) | 1.1.18 → 1.1.21; 5.0.9 → 5.0.12 | atualização do lockfile dentro das faixas |
+| `qs` (1) | 6.16.0 → 6.17.1 | idem (via `@vscode/vsce`) |
+| `@azure/msal-node` (1) | 5.6.0 → 7.1.2 | `@azure/identity` 4.14.1, permitido pelo `^4.13.2` do `@vscode/vsce` |
+
+esbuild não mudou; o bundle da Action ficou idêntico byte a byte; o VSIX
+continua com os mesmos sete arquivos.
+
+**Restante: `minimatch` GHSA-g3hv-75wg-m249 (moderate, publicado em
+2026-10-30).** Corrigido só em 11.0.1 (2026-10-27). Todos os consumidores aqui
+— ESLint 9 **e 10**, typescript-eslint, `@eslint/config-array`, `@vscode/vsce` —
+exigem `^3` ou `^10`; nenhum upgrade existente resolve. Forçar a 11 por
+override colocaria uma major não validada nesses pacotes (e a API da 3.x é
+incompatível). Análise de exposição:
+
+- a 3.1.5 instalada **não contém** o código vulnerável (`firstPhasePreProcess`
+  não existe nela); a faixa `<11.0.1` do advisory é ampla demais para a 3.x;
+- a 10.2.6 contém, mas a exploração exige **padrão glob controlado por
+  atacante** com `optimizationLevel >= 2`. Aqui todos os padrões vêm da
+  configuração do próprio repositório (`eslint.config.js`, `.vscodeignore`,
+  tsconfig), em ferramentas que não rodam em produção.
+
+O job `dependency audit` continua falhando por esse advisory. Não foi
+silenciado: aceitar o risco (por exemplo `auditConfig.ignoreGhsas` com esta
+justificativa e data de revisão) é decisão do mantenedor; a alternativa é
+esperar os consumidores adotarem a 11.

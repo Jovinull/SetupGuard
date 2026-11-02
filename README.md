@@ -21,7 +21,7 @@ checks:
 | --- | --- |
 | CLI (`packages/cli`) | implemented and tested |
 | VS Code extension (`packages/vscode`) | implemented and tested; **not** published to any marketplace |
-| GitHub Action (`action.yml`, `packages/github-action`) | implemented and tested against a controlled API and against real public pull requests; **no release tag yet**, not on the GitHub Marketplace |
+| GitHub Action (`action.yml`, `packages/github-action`) | implemented; tested against a controlled API, against real public pull requests, and on GitHub Actions on this repository's own pull request; **no release tag yet**, not on the GitHub Marketplace |
 
 The product specification lives in [`Notes/`](Notes/README.md) and is the
 source of truth for scope and decisions.
@@ -65,8 +65,9 @@ reference does not exist and will not resolve.
    `GET /repos/{o}/{r}/contents/{path}?ref={base}` for the base version of a
    changed file — **only** for files a check actually reads.
 3. Diagnoses the base the same way and compares. A finding is **new** only if
-   the base does not have it; moving a README paragraph does not make an old
-   problem new.
+   the base does not have it, or had it at a lower severity — a warning the
+   pull request turns into an error is reported as raised by the pull request.
+   Moving a README paragraph does not make an old problem new.
 4. Reports through the runner: error/warning annotations on the diff for new
    problems, a job summary with every finding (new, already on the base, not
    comparable), and the list of API requests in the log.
@@ -267,10 +268,14 @@ Ubuntu, macOS and Windows, against the lowest Node this project supports
 check and the GitHub Action bundle check. `.github/workflows/setupguard.yml`
 runs the action on this repository's own pull requests.
 
-The last recorded GitHub run (commit `80b6207`, before the action existed) was
-green on all eight jobs. The action job, the self-check workflow and the
-current 600 tests have run locally (Windows, Node 24) but **not yet on GitHub**;
-their run history is kept in [Notes/17](Notes/17-github-action-implementada.md).
+On pull request #1 every job passes on GitHub — the six-leg matrix, the VSIX
+check, the action bundle check, and the action running on the pull request
+itself — **except the dependency audit**. That job fails on one moderate
+advisory in development tooling (`minimatch`, GHSA-g3hv-75wg-m249) that no
+released version of ESLint, typescript-eslint or `@vscode/vsce` has picked up
+the fix for yet; production dependencies are clean (`pnpm audit --prod`). It
+is deliberately not silenced. Analysis, and the run history, are in
+[Notes/17](Notes/17-github-action-implementada.md).
 
 One thing a green matrix still does not prove:
 
