@@ -55,13 +55,14 @@ setupguard/
 │  ├─ core/           @setupguard/core
 │  ├─ adapter-node/   @setupguard/adapter-node
 │  ├─ cli/            @setupguard/cli
-│  └─ vscode/         setupguard
+│  ├─ vscode/         setupguard
+│  └─ github-action/  @setupguard/github-action (bundle em dist/, action.yml na raiz)
 ├─ fixtures/
 ├─ testing/
 └─ Notes/
 ```
 
-A pasta `adapters/*` separada **não** foi criada: npm, pnpm, Yarn, Bun, dotenv e Markdown compartilham o mesmo modelo de fatos Node e vivem em um único adapter. Dividir antes de existir um segundo ecossistema seria separação sem necessidade. `github-action/` ainda não existe.
+A pasta `adapters/*` separada **não** foi criada: npm, pnpm, Yarn, Bun, dotenv e Markdown compartilham o mesmo modelo de fatos Node e vivem em um único adapter. Dividir antes de existir um segundo ecossistema seria separação sem necessidade. `github-action/` existe desde 2026-11-02 ([17](17-github-action-implementada.md)).
 
 Os nomes publicados continuam **Em aberto**; por isso todos os pacotes estão marcados `"private": true`.
 
@@ -164,6 +165,5 @@ Metas de cobertura e orçamento de performance continuam **Em aberto**; ainda n�
 
 - cache e invalidação;
 - SDK e isolamento de plugins;
-- estratégia de distribuição da Action;
 - namespace de configuração por adapter, necessário no primeiro segundo ecossistema.
 
