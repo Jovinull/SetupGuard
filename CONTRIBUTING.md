@@ -41,6 +41,14 @@ pnpm --filter @setupguard/github-action run bundle
 
 CI rebuilds the bundle and fails if it differs from the committed file.
 
+## Audit exceptions
+
+`pnpm audit` must pass. An advisory may be ignored only through `audit.ignore`
+in `pnpm-workspace.yaml`, one GHSA at a time, with a matching entry and review
+date in `scripts/check-audit-exceptions.mjs` and the analysis in `Notes/`. CI
+fails when an exception is undocumented or overdue. An exception is an
+accepted risk, never a fix.
+
 ## Where things are decided
 
 Product and architecture decisions are recorded in [`Notes/`](Notes/README.md),

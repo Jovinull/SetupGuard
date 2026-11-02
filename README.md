@@ -268,13 +268,15 @@ Ubuntu, macOS and Windows, against the lowest Node this project supports
 check and the GitHub Action bundle check. `.github/workflows/setupguard.yml`
 runs the action on this repository's own pull requests.
 
-On pull request #1 every job passes on GitHub — the six-leg matrix, the VSIX
-check, the action bundle check, and the action running on the pull request
-itself — **except the dependency audit**. That job fails on one moderate
-advisory in development tooling (`minimatch`, GHSA-g3hv-75wg-m249) that no
-released version of ESLint, typescript-eslint or `@vscode/vsce` has picked up
-the fix for yet; production dependencies are clean (`pnpm audit --prod`). It
-is deliberately not silenced. Analysis, and the run history, are in
+Production dependencies have no known advisory (`pnpm audit --prod`). The full
+audit carries **one accepted exception**, not a fix: `minimatch`
+GHSA-g3hv-75wg-m249 (moderate), in development tooling only (ESLint,
+typescript-eslint, `@vscode/vsce`). No released version of those tools uses the
+fixed `minimatch` yet; the vulnerable code needs `optimizationLevel >= 2`,
+which none of them sets, and `minimatch` is not in the action bundle or the
+VSIX. The exception is scoped to that one advisory in `pnpm-workspace.yaml`,
+and `scripts/check-audit-exceptions.mjs` fails CI once its review date
+(2026-11-30) passes. Analysis and run history:
 [Notes/17](Notes/17-github-action-implementada.md).
 
 One thing a green matrix still does not prove:
