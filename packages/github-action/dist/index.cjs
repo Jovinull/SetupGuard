@@ -9360,14 +9360,14 @@ var import_promises = require("node:fs/promises");
 var import_node_fs4 = require("node:fs");
 var import_node_path5 = __toESM(require("node:path"), 1);
 
-// packages/core/dist/model/types.js
+// packages/core/src/model/types.ts
 var REPORT_SCHEMA_VERSION = 1;
 var DEFAULT_LEVELS = ["static", "environment"];
 function allFindings(report) {
   return report.results.flatMap((result) => [...result.findings]);
 }
 
-// packages/core/dist/fs/workspace-fs.js
+// packages/core/src/fs/workspace-fs.ts
 var DEFAULT_IGNORED_DIRS = [
   ".git",
   "node_modules",
@@ -9385,17 +9385,14 @@ var DEFAULT_IGNORED_DIRS = [
   "__pycache__"
 ];
 var WorkspaceBoundaryError = class extends Error {
-  requestedPath;
   constructor(requestedPath) {
     super(`Path escapes the workspace root: ${requestedPath}`);
     this.requestedPath = requestedPath;
     this.name = "WorkspaceBoundaryError";
   }
+  requestedPath;
 };
 var FileTooLargeError = class extends Error {
-  relativePath;
-  size;
-  limit;
   constructor(relativePath, size, limit) {
     super(`File ${relativePath} is ${size} bytes, above the ${limit} byte limit`);
     this.relativePath = relativePath;
@@ -9403,38 +9400,33 @@ var FileTooLargeError = class extends Error {
     this.limit = limit;
     this.name = "FileTooLargeError";
   }
+  relativePath;
+  size;
+  limit;
 };
 
-// packages/core/dist/fs/node-workspace-fs.js
+// packages/core/src/fs/node-workspace-fs.ts
 var import_node_fs = require("node:fs");
 var import_node_path = __toESM(require("node:path"), 1);
 
-// packages/core/dist/config/ignore.js
+// packages/core/src/config/ignore.ts
 var WINDOWS_ABSOLUTE = /^[A-Za-z]:[\\/]/;
 var UNSUPPORTED = /[[\]{}()!+@]/;
 var CONTROL_CHARACTERS = new RegExp("[\\u0000-\\u001F\\u007F]");
 function normalizeIgnorePattern(raw) {
-  if (CONTROL_CHARACTERS.test(raw))
-    return { error: "control-characters" };
+  if (CONTROL_CHARACTERS.test(raw)) return { error: "control-characters" };
   const probe = raw.trim().replace(/\\/g, "/");
   const canonical = probe.split("/").filter((segment) => segment !== "" && segment !== ".").join("/");
-  if (canonical === "")
-    return { error: "empty" };
-  if (probe.startsWith("!"))
-    return { error: "negation" };
-  if (probe.startsWith("/") || WINDOWS_ABSOLUTE.test(probe))
-    return { error: "absolute" };
-  if (UNSUPPORTED.test(probe))
-    return { error: "unsupported-syntax" };
-  if (canonical.split("/").some((segment) => segment === ".."))
-    return { error: "traversal" };
-  if (canonical !== raw)
-    return { error: "not-canonical", canonical };
+  if (canonical === "") return { error: "empty" };
+  if (probe.startsWith("!")) return { error: "negation" };
+  if (probe.startsWith("/") || WINDOWS_ABSOLUTE.test(probe)) return { error: "absolute" };
+  if (UNSUPPORTED.test(probe)) return { error: "unsupported-syntax" };
+  if (canonical.split("/").some((segment) => segment === "..")) return { error: "traversal" };
+  if (canonical !== raw) return { error: "not-canonical", canonical };
   return { pattern: canonical };
 }
 function matchesIgnore(relativePath, patterns) {
-  if (patterns.length === 0)
-    return false;
+  if (patterns.length === 0) return false;
   const candidate = relativePath.replace(/\\/g, "/").replace(/^\.\//, "");
   return patterns.some((pattern) => matchesPattern(candidate, pattern));
 }
@@ -9447,27 +9439,21 @@ function matchesPattern(candidate, pattern) {
 var regexpCache = /* @__PURE__ */ new Map();
 function toRegExp(pattern) {
   const cached = regexpCache.get(pattern);
-  if (cached)
-    return cached;
+  if (cached) return cached;
   const segments = pattern.split("/");
   let body = "";
   let needSeparator = false;
   for (const [index, segment] of segments.entries()) {
     const isLast = index === segments.length - 1;
     if (segment === "**") {
-      if (index === 0 && isLast)
-        body += ".*";
-      else if (isLast)
-        body += "(?:/.*)?";
-      else if (index === 0)
-        body += "(?:[^/]+/)*";
-      else
-        body += "(?:/[^/]+)*/";
+      if (index === 0 && isLast) body += ".*";
+      else if (isLast) body += "(?:/.*)?";
+      else if (index === 0) body += "(?:[^/]+/)*";
+      else body += "(?:/[^/]+)*/";
       needSeparator = false;
       continue;
     }
-    if (needSeparator)
-      body += "/";
+    if (needSeparator) body += "/";
     body += escapeSegment(segment);
     needSeparator = true;
   }
@@ -9479,7 +9465,7 @@ function escapeSegment(segment) {
   return segment.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[^/]*").replace(/\?/g, "[^/]");
 }
 
-// packages/core/dist/fs/node-workspace-fs.js
+// packages/core/src/fs/node-workspace-fs.ts
 var DEFAULT_MAX_FILE_BYTES = 2 * 1024 * 1024;
 var DEFAULT_MAX_DEPTH = 8;
 var DEFAULT_MAX_FILES = 5e3;
@@ -9521,8 +9507,7 @@ var NodeWorkspaceFs = class {
       return null;
     }
     const realRoot = await this.#resolveRoot();
-    if (realRoot === null)
-      return null;
+    if (realRoot === null) return null;
     try {
       const real = await import_node_fs.promises.realpath(absolute);
       return isInside(realRoot, real) ? real : null;
@@ -9535,8 +9520,7 @@ var NodeWorkspaceFs = class {
   }
   async isFile(relativePath) {
     const real = await this.realPath(relativePath);
-    if (real === null)
-      return false;
+    if (real === null) return false;
     try {
       return (await import_node_fs.promises.stat(real)).isFile();
     } catch {
@@ -9579,8 +9563,7 @@ var NodeWorkspaceFs = class {
       const bytesToRead = Math.min(READ_CHUNK_BYTES, remaining + 1);
       const buffer = Buffer.allocUnsafe(bytesToRead);
       const { bytesRead } = await handle.read(buffer, 0, bytesToRead, null);
-      if (bytesRead === 0)
-        break;
+      if (bytesRead === 0) break;
       total += bytesRead;
       if (total > this.#maxFileBytes) {
         throw new FileTooLargeError(relativePath, total, this.#maxFileBytes);
@@ -9591,8 +9574,7 @@ var NodeWorkspaceFs = class {
   }
   async listDir(relativePath) {
     const real = await this.realPath(relativePath);
-    if (real === null)
-      return [];
+    if (real === null) return [];
     try {
       return await import_node_fs.promises.readdir(real);
     } catch {
@@ -9620,8 +9602,7 @@ var NodeWorkspaceFs = class {
         return;
       }
       const real = await this.realPath(dir);
-      if (real === null)
-        return;
+      if (real === null) return;
       let entries;
       try {
         entries = await import_node_fs.promises.readdir(real, { withFileTypes: true });
@@ -9636,21 +9617,15 @@ var NodeWorkspaceFs = class {
         }
         const childRelative = dir === "." ? entry.name : `${dir}/${entry.name}`;
         if (entry.isDirectory()) {
-          if (ignored.has(entry.name))
-            continue;
-          if (matchesIgnore(childRelative, ignore))
-            continue;
+          if (ignored.has(entry.name)) continue;
+          if (matchesIgnore(childRelative, ignore)) continue;
           await visit2(childRelative, depth + 1);
           continue;
         }
-        if (!entry.isFile())
-          continue;
-        if (names && !names.includes(entry.name))
-          continue;
-        if (extensions && !extensions.some((ext) => entry.name.endsWith(ext)))
-          continue;
-        if (matchesIgnore(childRelative, ignore))
-          continue;
+        if (!entry.isFile()) continue;
+        if (names && !names.includes(entry.name)) continue;
+        if (extensions && !extensions.some((ext) => entry.name.endsWith(ext))) continue;
+        if (matchesIgnore(childRelative, ignore)) continue;
         files.push(childRelative);
       }
     };
@@ -9667,8 +9642,7 @@ var NodeWorkspaceFs = class {
   }
 };
 function isInside(root, candidate) {
-  if (candidate === root)
-    return true;
+  if (candidate === root) return true;
   const relative = import_node_path.default.relative(root, candidate);
   return relative !== "" && !relative.startsWith("..") && !import_node_path.default.isAbsolute(relative);
 }
@@ -9677,7 +9651,7 @@ function normalizeDir(dir) {
   return trimmed === "" || trimmed === "." ? "." : trimmed;
 }
 
-// packages/core/dist/env/node-environment.js
+// packages/core/src/env/node-environment.ts
 var import_node_fs2 = require("node:fs");
 var import_node_path2 = __toESM(require("node:path"), 1);
 var import_node_process = __toESM(require("node:process"), 1);
@@ -9705,18 +9679,15 @@ var NodeEnvironmentProbe = class {
   }
   which(binary) {
     const cached = this.#whichCache.get(binary);
-    if (cached)
-      return cached;
+    if (cached) return cached;
     const lookup = this.#lookup(binary);
     this.#whichCache.set(binary, lookup);
     return lookup;
   }
   async #lookup(binary) {
-    if (binary.includes("/") || binary.includes("\\"))
-      return null;
+    if (binary.includes("/") || binary.includes("\\")) return null;
     const pathValue = this.#env["PATH"] ?? this.#env["Path"] ?? "";
-    if (pathValue === "")
-      return null;
+    if (pathValue === "") return null;
     const isWindows = this.#platform === "win32";
     const dirs = pathValue.split(isWindows ? ";" : ":").filter((dir) => dir !== "");
     const candidates = isWindows ? (this.#env["PATHEXT"] ?? ".COM;.EXE;.BAT;.CMD").split(";").filter((ext) => ext !== "").map((ext) => binary + ext.toLowerCase()) : [binary];
@@ -9734,7 +9705,7 @@ var NodeEnvironmentProbe = class {
   }
 };
 
-// packages/core/dist/adapter/adapter.js
+// packages/core/src/adapter/adapter.ts
 function pass() {
   return { kind: "findings", findings: [] };
 }
@@ -9748,12 +9719,11 @@ function inconclusive(reason) {
   return { kind: "inconclusive", reason };
 }
 
-// packages/core/dist/adapter/registry.js
+// packages/core/src/adapter/registry.ts
 var AdapterRegistry = class {
   #adapters = /* @__PURE__ */ new Map();
   constructor(adapters = []) {
-    for (const adapter of adapters)
-      this.register(adapter);
+    for (const adapter of adapters) this.register(adapter);
   }
   register(adapter) {
     if (this.#adapters.has(adapter.id)) {
@@ -9777,7 +9747,9 @@ function assertNamespacedCheckIds(adapter) {
   const seen = /* @__PURE__ */ new Set();
   for (const check of adapter.checks) {
     if (!check.id.startsWith(`${adapter.id}/`)) {
-      throw new Error(`Check "${check.id}" must be namespaced as "${adapter.id}/<name>" by adapter "${adapter.id}"`);
+      throw new Error(
+        `Check "${check.id}" must be namespaced as "${adapter.id}/<name>" by adapter "${adapter.id}"`
+      );
     }
     if (seen.has(check.id)) {
       throw new Error(`Adapter "${adapter.id}" declares duplicate check id "${check.id}"`);
@@ -9786,7 +9758,7 @@ function assertNamespacedCheckIds(adapter) {
   }
 }
 
-// packages/core/dist/config/types.js
+// packages/core/src/config/types.ts
 var DEFAULT_CONFIG = {
   valid: true,
   checks: /* @__PURE__ */ new Map(),
@@ -9795,10 +9767,10 @@ var DEFAULT_CONFIG = {
   diagnostics: []
 };
 
-// packages/core/dist/config/load.js
+// packages/core/src/config/load.ts
 var import_yaml = __toESM(require_dist(), 1);
 
-// packages/core/dist/util/text-position.js
+// packages/core/src/util/text-position.ts
 function offsetToPosition(text, offset) {
   const clamped = Math.max(0, Math.min(offset, text.length));
   let line = 1;
@@ -9816,7 +9788,7 @@ function excerpt(value, maxLength = 160) {
   return oneLine.length <= maxLength ? oneLine : `${oneLine.slice(0, maxLength - 1)}…`;
 }
 
-// packages/core/dist/util/redact.js
+// packages/core/src/util/redact.ts
 var MAX_FIELD_LENGTH = 400;
 var MAX_PATH_LENGTH = 200;
 var REDACTED = "***";
@@ -9858,7 +9830,16 @@ var URL_CREDENTIALS = /\b([a-z][a-z0-9+.-]*:\/\/)([^\s/@:]+):([^\s/@]+)@/gi;
 var BARE_BEARER = /\bbearer\s+[A-Za-z0-9._~+/-]{8,}=*/gi;
 var CONTROL_CHARS = new RegExp("[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F]", "g");
 function redact(value, maxLength = MAX_FIELD_LENGTH) {
-  const cleaned = value.replace(URL_CREDENTIALS, (_m, scheme, user) => `${scheme}${user}:${REDACTED}@`).replace(FLAG_ASSIGNMENT, (match, lead, flag) => isSensitiveKey(flag) ? `${lead}${flag}=${REDACTED}` : match).replace(FLAG_SPACED_VALUE, (match, lead, flag, gap) => isSensitiveKey(flag) ? `${lead}${flag}${gap}${REDACTED}` : match).replace(ASSIGNMENT, (_m, name) => `${name}=${REDACTED}`).replace(KEYED_VALUE, (match, lead, key, separator) => isSensitiveKey(key) ? `${lead}${key}${separator}${REDACTED}` : match).replace(BARE_BEARER, REDACTED).replace(CONTROL_CHARS, " ");
+  const cleaned = value.replace(URL_CREDENTIALS, (_m, scheme, user) => `${scheme}${user}:${REDACTED}@`).replace(
+    FLAG_ASSIGNMENT,
+    (match, lead, flag) => isSensitiveKey(flag) ? `${lead}${flag}=${REDACTED}` : match
+  ).replace(
+    FLAG_SPACED_VALUE,
+    (match, lead, flag, gap) => isSensitiveKey(flag) ? `${lead}${flag}${gap}${REDACTED}` : match
+  ).replace(ASSIGNMENT, (_m, name) => `${name}=${REDACTED}`).replace(
+    KEYED_VALUE,
+    (match, lead, key, separator) => isSensitiveKey(key) ? `${lead}${key}${separator}${REDACTED}` : match
+  ).replace(BARE_BEARER, REDACTED).replace(CONTROL_CHARS, " ");
   return cleaned.length <= maxLength ? cleaned : `${cleaned.slice(0, maxLength - 1)}…`;
 }
 function redactOptional(value, maxLength) {
@@ -9872,8 +9853,7 @@ function redactPathOptional(value) {
   return value === void 0 ? void 0 : redactPath(value);
 }
 function describeError(error) {
-  if (error instanceof Error)
-    return redact(`${error.name}: ${error.message}`);
+  if (error instanceof Error) return redact(`${error.name}: ${error.message}`);
   return redact(String(error));
 }
 function describeJsonParseError(error) {
@@ -9891,7 +9871,7 @@ function describeJsonParseError(error) {
   return { message: "invalid JSON" };
 }
 
-// packages/core/dist/config/schema.js
+// packages/core/src/config/schema.ts
 var CONFIG_FILE_NAME = ".setupguard.yml";
 var MISNAMED_CONFIG_FILES = [
   ".setupguard.yaml",
@@ -9927,7 +9907,7 @@ var IGNORE_PATTERN_RULES = [
 ];
 var IGNORE_PATTERN_PATTERN = `^${IGNORE_PATTERN_RULES.join("")}\\S(?:[^]*\\S)?$`;
 
-// packages/core/dist/config/load.js
+// packages/core/src/config/load.ts
 async function loadConfig(options) {
   try {
     return await discoverAndLoad(options);
@@ -9942,8 +9922,7 @@ async function loadConfig(options) {
 async function discoverAndLoad(options) {
   const { fs: fs5 } = options;
   const present = (await fs5.listDir(".")).includes(CONFIG_FILE_NAME);
-  if (!present)
-    return await noConfig(fs5);
+  if (!present) return await noConfig(fs5);
   if (!await fs5.isFile(CONFIG_FILE_NAME)) {
     return invalid([
       diagnostic("config/not-a-file", `${CONFIG_FILE_NAME} is not a readable regular file`, {
@@ -9970,7 +9949,11 @@ async function noConfig(fs5) {
         ...DEFAULT_CONFIG,
         valid: false,
         diagnostics: [
-          diagnostic("config/misnamed-file", `Found ${candidate}, but SetupGuard only reads ${CONFIG_FILE_NAME}`, { file: candidate, remediation: `Rename ${candidate} to ${CONFIG_FILE_NAME}.` })
+          diagnostic(
+            "config/misnamed-file",
+            `Found ${candidate}, but SetupGuard only reads ${CONFIG_FILE_NAME}`,
+            { file: candidate, remediation: `Rename ${candidate} to ${CONFIG_FILE_NAME}.` }
+          )
         ]
       };
     }
@@ -9979,32 +9962,40 @@ async function noConfig(fs5) {
 }
 function parseAndValidate(text, knownCheckIds) {
   const doc = (0, import_yaml.parseDocument)(text, { uniqueKeys: true, merge: false });
-  const syntax = doc.errors.map((error) => diagnostic("config/invalid-yaml", redact(firstLine(error.message)), {
-    ...positionFromOffset(text, error.pos[0])
-  }));
-  syntax.push(...doc.warnings.map((warning) => diagnostic("config/unsupported-syntax", redact(firstLine(warning.message)), {
-    ...positionFromOffset(text, warning.pos[0])
-  })));
+  const syntax = doc.errors.map(
+    (error) => diagnostic("config/invalid-yaml", redact(firstLine(error.message)), {
+      ...positionFromOffset(text, error.pos[0])
+    })
+  );
+  syntax.push(
+    ...doc.warnings.map(
+      (warning) => diagnostic("config/unsupported-syntax", redact(firstLine(warning.message)), {
+        ...positionFromOffset(text, warning.pos[0])
+      })
+    )
+  );
   (0, import_yaml.visit)(doc, (_key, node) => {
-    if (node === null || typeof node !== "object")
-      return;
+    if (node === null || typeof node !== "object") return;
     const anchored = node;
     if ((0, import_yaml.isAlias)(node)) {
-      syntax.push(diagnostic("config/unsupported-syntax", "YAML aliases are not supported in configuration", {
-        ...positionFromOffset(text, anchored.range?.[0]),
-        remediation: "Write the value out instead of referencing an anchor."
-      }));
+      syntax.push(
+        diagnostic("config/unsupported-syntax", "YAML aliases are not supported in configuration", {
+          ...positionFromOffset(text, anchored.range?.[0]),
+          remediation: "Write the value out instead of referencing an anchor."
+        })
+      );
       return;
     }
     if (typeof anchored.anchor === "string") {
-      syntax.push(diagnostic("config/unsupported-syntax", "YAML anchors are not supported in configuration", {
-        ...positionFromOffset(text, anchored.range?.[0]),
-        remediation: `Remove the "&${redact(anchored.anchor)}" anchor.`
-      }));
+      syntax.push(
+        diagnostic("config/unsupported-syntax", "YAML anchors are not supported in configuration", {
+          ...positionFromOffset(text, anchored.range?.[0]),
+          remediation: `Remove the "&${redact(anchored.anchor)}" anchor.`
+        })
+      );
     }
   });
-  if (syntax.length > 0)
-    return invalid(syntax);
+  if (syntax.length > 0) return invalid(syntax);
   let raw;
   try {
     raw = doc.toJS({ maxAliasCount: 0 });
@@ -10033,35 +10024,44 @@ function validate(raw, doc, text, knownCheckIds) {
   }
   for (const key of Object.keys(raw)) {
     if (!CONFIG_TOP_LEVEL_KEYS.includes(key)) {
-      diagnostics.push(diagnostic("config/unknown-key", `Unknown configuration key "${redact(key)}"`, {
-        ...atKey([key]),
-        path: key,
-        // Not "Known keys: ...": the redactor reads `<name>: <value>` as an
-        // assignment and `keys` is a sensitive name, so the list itself
-        // would be replaced with `***`. The wording carries the meaning
-        // without the shape.
-        remediation: `Valid keys are ${CONFIG_TOP_LEVEL_KEYS.join(", ")}.`
-      }));
+      diagnostics.push(
+        diagnostic("config/unknown-key", `Unknown configuration key "${redact(key)}"`, {
+          ...atKey([key]),
+          path: key,
+          // Not "Known keys: ...": the redactor reads `<name>: <value>` as an
+          // assignment and `keys` is a sensitive name, so the list itself
+          // would be replaced with `***`. The wording carries the meaning
+          // without the shape.
+          remediation: `Valid keys are ${CONFIG_TOP_LEVEL_KEYS.join(", ")}.`
+        })
+      );
     }
   }
   if (!("version" in raw)) {
-    diagnostics.push(diagnostic("config/version-missing", 'Configuration is missing "version"', {
-      ...at([]),
-      path: "version",
-      remediation: `Add "version: ${CONFIG_VERSION}" as the first line.`
-    }));
+    diagnostics.push(
+      diagnostic("config/version-missing", 'Configuration is missing "version"', {
+        ...at([]),
+        path: "version",
+        remediation: `Add "version: ${CONFIG_VERSION}" as the first line.`
+      })
+    );
   } else if (raw["version"] !== CONFIG_VERSION) {
-    diagnostics.push(diagnostic("config/version-unsupported", `Unsupported configuration version ${redact(String(raw["version"]))}`, {
-      ...at(["version"]),
-      path: "version",
-      remediation: `This release of SetupGuard reads version ${CONFIG_VERSION} only.`
-    }));
+    diagnostics.push(
+      diagnostic(
+        "config/version-unsupported",
+        `Unsupported configuration version ${redact(String(raw["version"]))}`,
+        {
+          ...at(["version"]),
+          path: "version",
+          remediation: `This release of SetupGuard reads version ${CONFIG_VERSION} only.`
+        }
+      )
+    );
   }
   const checks = readChecks(raw["checks"], knownCheckIds, at, atKey, diagnostics);
   const optionalEnvVars = readEnv(raw["env"], at, atKey, diagnostics);
   const ignore = readIgnore(raw["ignore"], at, diagnostics);
-  if (diagnostics.length > 0)
-    return invalid(diagnostics);
+  if (diagnostics.length > 0) return invalid(diagnostics);
   return {
     source: CONFIG_FILE_NAME,
     valid: true,
@@ -10073,50 +10073,58 @@ function validate(raw, doc, text, knownCheckIds) {
 }
 function readChecks(value, knownCheckIds, at, atKey, diagnostics) {
   const result = /* @__PURE__ */ new Map();
-  if (value === void 0)
-    return result;
+  if (value === void 0) return result;
   if (!isPlainObject(value)) {
-    diagnostics.push(diagnostic("config/wrong-type", '"checks" must be a mapping of check id to settings', {
-      ...at(["checks"]),
-      path: "checks"
-    }));
+    diagnostics.push(
+      diagnostic("config/wrong-type", '"checks" must be a mapping of check id to settings', {
+        ...at(["checks"]),
+        path: "checks"
+      })
+    );
     return result;
   }
   for (const [id, setting] of Object.entries(value)) {
     if (!knownCheckIds.includes(id)) {
-      diagnostics.push(diagnostic("config/unknown-check", `Unknown check id "${redact(id)}"`, {
-        ...atKey(["checks", id]),
-        path: `checks.${id}`,
-        remediation: `Known checks: ${knownCheckIds.join(", ")}.`
-      }));
+      diagnostics.push(
+        diagnostic("config/unknown-check", `Unknown check id "${redact(id)}"`, {
+          ...atKey(["checks", id]),
+          path: `checks.${id}`,
+          remediation: `Known checks: ${knownCheckIds.join(", ")}.`
+        })
+      );
       continue;
     }
     if (!isPlainObject(setting)) {
-      diagnostics.push(diagnostic("config/wrong-type", `"checks.${redact(id)}" must be a mapping`, {
-        ...at(["checks", id]),
-        path: `checks.${id}`,
-        remediation: `Known settings: ${CONFIG_CHECK_KEYS.join(", ")}.`
-      }));
+      diagnostics.push(
+        diagnostic("config/wrong-type", `"checks.${redact(id)}" must be a mapping`, {
+          ...at(["checks", id]),
+          path: `checks.${id}`,
+          remediation: `Known settings: ${CONFIG_CHECK_KEYS.join(", ")}.`
+        })
+      );
       continue;
     }
     for (const key of Object.keys(setting)) {
       if (!CONFIG_CHECK_KEYS.includes(key)) {
-        diagnostics.push(diagnostic("config/unknown-key", `Unknown setting "${redact(key)}" for check "${redact(id)}"`, {
-          ...atKey(["checks", id, key]),
-          path: `checks.${id}.${key}`,
-          remediation: `Known settings: ${CONFIG_CHECK_KEYS.join(", ")}.`
-        }));
+        diagnostics.push(
+          diagnostic("config/unknown-key", `Unknown setting "${redact(key)}" for check "${redact(id)}"`, {
+            ...atKey(["checks", id, key]),
+            path: `checks.${id}.${key}`,
+            remediation: `Known settings: ${CONFIG_CHECK_KEYS.join(", ")}.`
+          })
+        );
       }
     }
     const severity = setting["severity"];
-    if (severity === void 0)
-      continue;
+    if (severity === void 0) continue;
     if (typeof severity !== "string" || !SEVERITY_OVERRIDES.includes(severity)) {
-      diagnostics.push(diagnostic("config/invalid-severity", `Invalid severity ${redact(JSON.stringify(severity) ?? "undefined")}`, {
-        ...at(["checks", id, "severity"]),
-        path: `checks.${id}.severity`,
-        remediation: `Use one of: ${SEVERITY_OVERRIDES.join(", ")}.`
-      }));
+      diagnostics.push(
+        diagnostic("config/invalid-severity", `Invalid severity ${redact(JSON.stringify(severity) ?? "undefined")}`, {
+          ...at(["checks", id, "severity"]),
+          path: `checks.${id}.severity`,
+          remediation: `Use one of: ${SEVERITY_OVERRIDES.join(", ")}.`
+        })
+      );
       continue;
     }
     result.set(id, severity);
@@ -10125,47 +10133,59 @@ function readChecks(value, knownCheckIds, at, atKey, diagnostics) {
 }
 function readEnv(value, at, atKey, diagnostics) {
   const result = /* @__PURE__ */ new Set();
-  if (value === void 0)
-    return result;
+  if (value === void 0) return result;
   if (!isPlainObject(value)) {
-    diagnostics.push(diagnostic("config/wrong-type", '"env" must be a mapping', { ...at(["env"]), path: "env" }));
+    diagnostics.push(
+      diagnostic("config/wrong-type", '"env" must be a mapping', { ...at(["env"]), path: "env" })
+    );
     return result;
   }
   for (const key of Object.keys(value)) {
     if (!CONFIG_ENV_KEYS.includes(key)) {
-      diagnostics.push(diagnostic("config/unknown-key", `Unknown key "${redact(key)}" under "env"`, {
-        ...atKey(["env", key]),
-        path: `env.${key}`,
-        remediation: `Valid keys are ${CONFIG_ENV_KEYS.join(", ")}.`
-      }));
+      diagnostics.push(
+        diagnostic("config/unknown-key", `Unknown key "${redact(key)}" under "env"`, {
+          ...atKey(["env", key]),
+          path: `env.${key}`,
+          remediation: `Valid keys are ${CONFIG_ENV_KEYS.join(", ")}.`
+        })
+      );
     }
   }
   const optional = value["optional"];
-  if (optional === void 0)
-    return result;
+  if (optional === void 0) return result;
   if (!Array.isArray(optional)) {
-    diagnostics.push(diagnostic("config/wrong-type", '"env.optional" must be a list of variable names', {
-      ...at(["env", "optional"]),
-      path: "env.optional"
-    }));
+    diagnostics.push(
+      diagnostic("config/wrong-type", '"env.optional" must be a list of variable names', {
+        ...at(["env", "optional"]),
+        path: "env.optional"
+      })
+    );
     return result;
   }
   const namePattern = new RegExp(ENV_VAR_NAME_PATTERN);
   for (const [index, entry] of optional.entries()) {
     const path6 = `env.optional[${index}]`;
     if (typeof entry !== "string" || !namePattern.test(entry)) {
-      diagnostics.push(diagnostic("config/invalid-env-name", `"${redact(String(entry))}" is not a valid environment variable name`, {
-        ...at(["env", "optional", index]),
-        path: path6,
-        remediation: "Use exact names such as SENTRY_DSN. Patterns are not supported."
-      }));
+      diagnostics.push(
+        diagnostic(
+          "config/invalid-env-name",
+          `"${redact(String(entry))}" is not a valid environment variable name`,
+          {
+            ...at(["env", "optional", index]),
+            path: path6,
+            remediation: "Use exact names such as SENTRY_DSN. Patterns are not supported."
+          }
+        )
+      );
       continue;
     }
     if (result.has(entry)) {
-      diagnostics.push(diagnostic("config/duplicate-entry", `"${redact(entry)}" is listed twice in env.optional`, {
-        ...at(["env", "optional", index]),
-        path: path6
-      }));
+      diagnostics.push(
+        diagnostic("config/duplicate-entry", `"${redact(entry)}" is listed twice in env.optional`, {
+          ...at(["env", "optional", index]),
+          path: path6
+        })
+      );
       continue;
     }
     result.add(entry);
@@ -10173,36 +10193,47 @@ function readEnv(value, at, atKey, diagnostics) {
   return result;
 }
 function readIgnore(value, at, diagnostics) {
-  if (value === void 0)
-    return [];
+  if (value === void 0) return [];
   if (!Array.isArray(value)) {
-    diagnostics.push(diagnostic("config/wrong-type", '"ignore" must be a list of patterns', {
-      ...at(["ignore"]),
-      path: "ignore"
-    }));
+    diagnostics.push(
+      diagnostic("config/wrong-type", '"ignore" must be a list of patterns', {
+        ...at(["ignore"]),
+        path: "ignore"
+      })
+    );
     return [];
   }
   const patterns = [];
   for (const [index, entry] of value.entries()) {
     const path6 = `ignore[${index}]`;
     if (typeof entry !== "string") {
-      diagnostics.push(diagnostic("config/wrong-type", `"${path6}" must be a string`, { ...at(["ignore", index]), path: path6 }));
+      diagnostics.push(
+        diagnostic("config/wrong-type", `"${path6}" must be a string`, { ...at(["ignore", index]), path: path6 })
+      );
       continue;
     }
     const normalized = normalizeIgnorePattern(entry);
     if (normalized.error !== void 0 || normalized.pattern === void 0) {
-      diagnostics.push(diagnostic("config/invalid-ignore-pattern", `Ignore pattern "${redact(entry)}" is ${describePatternError(normalized.error)}`, {
-        ...at(["ignore", index]),
-        path: path6,
-        remediation: normalized.canonical !== void 0 ? `Write it as "${redact(normalized.canonical)}".` : "Patterns must be relative to the workspace root and may use * and **."
-      }));
+      diagnostics.push(
+        diagnostic(
+          "config/invalid-ignore-pattern",
+          `Ignore pattern "${redact(entry)}" is ${describePatternError(normalized.error)}`,
+          {
+            ...at(["ignore", index]),
+            path: path6,
+            remediation: normalized.canonical !== void 0 ? `Write it as "${redact(normalized.canonical)}".` : "Patterns must be relative to the workspace root and may use * and **."
+          }
+        )
+      );
       continue;
     }
     if (patterns.includes(normalized.pattern)) {
-      diagnostics.push(diagnostic("config/duplicate-entry", `Ignore pattern "${redact(entry)}" is listed twice`, {
-        ...at(["ignore", index]),
-        path: path6
-      }));
+      diagnostics.push(
+        diagnostic("config/duplicate-entry", `Ignore pattern "${redact(entry)}" is listed twice`, {
+          ...at(["ignore", index]),
+          path: path6
+        })
+      );
       continue;
     }
     patterns.push(normalized.pattern);
@@ -10247,8 +10278,7 @@ function locateKey(doc, text, path6) {
         const key = item?.key;
         if (scalarText(key) === wanted) {
           const offset = rangeOf(key)?.[0];
-          if (offset !== void 0)
-            return positionFromOffset(text, offset);
+          if (offset !== void 0) return positionFromOffset(text, offset);
         }
       }
     }
@@ -10262,15 +10292,12 @@ function rangeOf(node) {
 }
 function scalarText(node) {
   const value = node?.value;
-  if (typeof value === "string")
-    return value;
-  if (typeof value === "number" || typeof value === "boolean")
-    return String(value);
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
   return void 0;
 }
 function positionFromOffset(text, offset) {
-  if (offset === void 0)
-    return {};
+  if (offset === void 0) return {};
   const { line, column } = offsetToPosition(text, offset);
   return { line, column };
 }
@@ -10296,33 +10323,26 @@ function isPlainObject(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-// packages/core/dist/engine/aggregate.js
+// packages/core/src/engine/aggregate.ts
 function aggregateReadiness(results) {
   const counts2 = countStatuses(results);
-  if (counts2.errorFindings > 0)
-    return "BLOCKED";
-  if (counts2.internalErrors > 0)
-    return "INCOMPLETE";
-  if (counts2.inconclusive > 0)
-    return "INCOMPLETE";
-  if (counts2.warningFindings > 0)
-    return "WARNINGS";
-  if (counts2.conclusive === 0)
-    return "INCOMPLETE";
+  if (counts2.errorFindings > 0) return "BLOCKED";
+  if (counts2.internalErrors > 0) return "INCOMPLETE";
+  if (counts2.inconclusive > 0) return "INCOMPLETE";
+  if (counts2.warningFindings > 0) return "WARNINGS";
+  if (counts2.conclusive === 0) return "INCOMPLETE";
   return "READY";
 }
 function incompleteReason(results) {
   const counts2 = countStatuses(results);
-  if (counts2.errorFindings > 0)
-    return void 0;
+  if (counts2.errorFindings > 0) return void 0;
   if (counts2.internalErrors > 0) {
     return `${counts2.internalErrors} check(s) failed inside SetupGuard, so the diagnosis is partial`;
   }
   if (counts2.inconclusive > 0) {
     return `${counts2.inconclusive} check(s) could not reach a conclusion, so part of the contract is unverified`;
   }
-  if (counts2.warningFindings > 0)
-    return void 0;
+  if (counts2.warningFindings > 0) return void 0;
   if (counts2.conclusive === 0) {
     return results.length === 0 ? "No check ran: no supported project was detected in this directory" : "No check reached a conclusion about this project";
   }
@@ -10336,10 +10356,8 @@ function countStatuses(results) {
   let internalErrors = 0;
   for (const result of results) {
     for (const finding of result.findings) {
-      if (finding.severity === "error")
-        errorFindings += 1;
-      else if (finding.severity === "warning")
-        warningFindings += 1;
+      if (finding.severity === "error") errorFindings += 1;
+      else if (finding.severity === "warning") warningFindings += 1;
     }
     switch (result.status) {
       case "pass":
@@ -10369,8 +10387,7 @@ function summarize(results) {
   let internalErrors = 0;
   let conclusive = 0;
   for (const result of results) {
-    for (const finding of result.findings)
-      bySeverity[finding.severity] += 1;
+    for (const finding of result.findings) bySeverity[finding.severity] += 1;
     switch (result.status) {
       case "pass":
         passed += 1;
@@ -10407,14 +10424,12 @@ function summarize(results) {
   };
 }
 function statusFromFindings(findings) {
-  if (findings.some((finding) => finding.severity === "error"))
-    return "error";
-  if (findings.some((finding) => finding.severity === "warning"))
-    return "warning";
+  if (findings.some((finding) => finding.severity === "error")) return "error";
+  if (findings.some((finding) => finding.severity === "warning")) return "warning";
   return "pass";
 }
 
-// packages/core/dist/engine/sanitize.js
+// packages/core/src/engine/sanitize.ts
 function sanitizeFinding(finding) {
   return {
     ...finding,
@@ -10451,13 +10466,12 @@ function sanitizeResult(result) {
 function definedOnly(value) {
   const result = {};
   for (const [key, entry] of Object.entries(value)) {
-    if (entry !== void 0)
-      result[key] = entry;
+    if (entry !== void 0) result[key] = entry;
   }
   return result;
 }
 
-// packages/core/dist/engine/run.js
+// packages/core/src/engine/run.ts
 var DEFAULT_CHECK_TIMEOUT_MS = 1e4;
 var DEFAULT_ADAPTER_TIMEOUT_MS = 3e4;
 async function runDiagnosis(options) {
@@ -10495,15 +10509,16 @@ async function runDiagnosis(options) {
       discovery.dispose();
     }
     adapterReports.push({ id: adapter.id, name: adapter.name, detected });
-    if (!detected)
-      continue;
+    if (!detected) continue;
     for (const check of adapter.checks) {
-      results.push(await runCheck(check, facts, options, {
-        levels,
-        timeoutMs: checkTimeoutMs,
-        allowSideEffects,
-        config
-      }));
+      results.push(
+        await runCheck(check, facts, options, {
+          levels,
+          timeoutMs: checkTimeoutMs,
+          allowSideEffects,
+          config
+        })
+      );
     }
   }
   const sanitized = results.map(sanitizeResult);
@@ -10583,7 +10598,11 @@ async function runCheck(check, facts, options, policy) {
         reason: "Check does not apply to this project"
       };
     }
-    const output = await runWithDeadline(() => check.run(facts, context), deadline, `Check "${check.id}" exceeded its ${policy.timeoutMs}ms budget`);
+    const output = await runWithDeadline(
+      () => check.run(facts, context),
+      deadline,
+      `Check "${check.id}" exceeded its ${policy.timeoutMs}ms budget`
+    );
     return normalizeOutput(base, output, Date.now() - startedAt, override);
   } catch (error) {
     return {
@@ -10632,10 +10651,8 @@ function withDeadline(parent, timeoutMs) {
   timer.unref?.();
   const onParentAbort = () => controller.abort(parent?.reason);
   if (parent) {
-    if (parent.aborted)
-      controller.abort(parent.reason);
-    else
-      parent.addEventListener("abort", onParentAbort, { once: true });
+    if (parent.aborted) controller.abort(parent.reason);
+    else parent.addEventListener("abort", onParentAbort, { once: true });
   }
   return {
     signal: controller.signal,
@@ -10646,8 +10663,7 @@ function withDeadline(parent, timeoutMs) {
   };
 }
 async function runWithDeadline(task, deadline, message) {
-  if (deadline.signal.aborted)
-    throw new Error(message);
+  if (deadline.signal.aborted) throw new Error(message);
   return Promise.race([
     Promise.resolve().then(task),
     new Promise((_resolve, reject) => {
@@ -10656,10 +10672,9 @@ async function runWithDeadline(task, deadline, message) {
   ]);
 }
 
-// packages/core/dist/util/json-source.js
+// packages/core/src/util/json-source.ts
 function locateJsonKey(text, path6) {
-  if (path6.length === 0)
-    return void 0;
+  if (path6.length === 0) return void 0;
   const scanner = new Scanner(text);
   try {
     return scanner.findInValue(path6, 0);
@@ -10668,17 +10683,16 @@ function locateJsonKey(text, path6) {
   }
 }
 var Scanner = class {
-  text;
-  #index = 0;
   constructor(text) {
     this.text = text;
   }
+  text;
+  #index = 0;
   /** Search for `path` starting at the value that begins at the current index. */
   findInValue(path6, depth) {
     this.#skipWhitespace();
     const char = this.text[this.#index];
-    if (char === "{")
-      return this.#findInObject(path6, depth);
+    if (char === "{") return this.#findInObject(path6, depth);
     if (char === "[") {
       this.#skipValue();
       return void 0;
@@ -10709,8 +10723,7 @@ var Scanner = class {
           };
         }
         const nested = this.findInValue(path6, depth + 1);
-        if (nested)
-          return nested;
+        if (nested) return nested;
       } else {
         this.#skipValue();
       }
@@ -10744,8 +10757,7 @@ var Scanner = class {
           this.#index -= 1;
           continue;
         }
-        if (current === open)
-          depth += 1;
+        if (current === open) depth += 1;
         else if (current === close) {
           depth -= 1;
           if (depth === 0) {
@@ -10808,21 +10820,22 @@ var UNESCAPE = {
   "/": "/"
 };
 
-// packages/core/dist/util/similar.js
+// packages/core/src/util/similar.ts
 function editDistance(a, b) {
-  if (a === b)
-    return 0;
-  if (a.length === 0)
-    return b.length;
-  if (b.length === 0)
-    return a.length;
+  if (a === b) return 0;
+  if (a.length === 0) return b.length;
+  if (b.length === 0) return a.length;
   let previous = Array.from({ length: b.length + 1 }, (_value, index) => index);
   let current = new Array(b.length + 1);
   for (let i = 1; i <= a.length; i += 1) {
     current[0] = i;
     for (let j = 1; j <= b.length; j += 1) {
       const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      current[j] = Math.min((current[j - 1] ?? 0) + 1, (previous[j] ?? 0) + 1, (previous[j - 1] ?? 0) + cost);
+      current[j] = Math.min(
+        (current[j - 1] ?? 0) + 1,
+        (previous[j] ?? 0) + 1,
+        (previous[j - 1] ?? 0) + cost
+      );
     }
     [previous, current] = [current, previous];
   }
@@ -10842,7 +10855,7 @@ function closestMatch(value, candidates) {
   return bestDistance <= threshold ? best : void 0;
 }
 
-// packages/adapter-node/dist/facts/gaps.js
+// packages/adapter-node/src/facts/gaps.ts
 function gapsFor(gaps, ...scopes) {
   return gaps.filter((gap) => scopes.includes(gap.scope));
 }
@@ -10853,7 +10866,7 @@ function describeGaps(gaps) {
   return gaps.map((gap) => gap.file === void 0 ? gap.reason : `${gap.file}: ${gap.reason}`).join("; ");
 }
 
-// packages/adapter-node/dist/facts/package-manager.js
+// packages/adapter-node/src/facts/package-manager.ts
 var PACKAGE_MANAGERS = ["npm", "pnpm", "yarn", "bun"];
 var LOCKFILES = [
   { file: "package-lock.json", manager: "npm" },
@@ -10935,7 +10948,7 @@ function binaryFor(manager) {
   return manager;
 }
 
-// packages/adapter-node/dist/facts/script-references.js
+// packages/adapter-node/src/facts/script-references.ts
 var WORKSPACE_REDIRECT_FLAGS = /* @__PURE__ */ new Set([
   "--cwd",
   "--dir",
@@ -10963,36 +10976,29 @@ function parseScriptReferences(commandLine) {
   const references = [];
   for (const segment of commandLine.split(SEPARATORS)) {
     const reference = parseSegment(segment);
-    if (reference)
-      references.push(reference);
+    if (reference) references.push(reference);
   }
   return references;
 }
 function parseSegment(segment) {
   const raw = segment.trim();
-  if (raw === "")
-    return void 0;
+  if (raw === "") return void 0;
   const tokens = tokenize(raw);
   let index = 0;
-  while (tokens[index] === "$" || tokens[index] === ">" || tokens[index] === "sudo")
-    index += 1;
+  while (tokens[index] === "$" || tokens[index] === ">" || tokens[index] === "sudo") index += 1;
   while (tokens[index] !== void 0 && /^[A-Za-z_][A-Za-z0-9_]*=/.test(tokens[index] ?? "")) {
     index += 1;
   }
   const manager = tokens[index];
-  if (manager === void 0 || !isPackageManagerName(manager))
-    return void 0;
+  if (manager === void 0 || !isPackageManagerName(manager)) return void 0;
   index += 1;
-  if (tokens.slice(index).some(isWorkspaceRedirect))
-    return void 0;
+  if (tokens.slice(index).some(isWorkspaceRedirect)) return void 0;
   let explicitRun = false;
   for (; index < tokens.length; index += 1) {
     const token = tokens[index];
-    if (token === void 0)
-      break;
+    if (token === void 0) break;
     if (token.startsWith("-")) {
-      if (FLAGS_WITH_VALUE.has(token))
-        index += 1;
+      if (FLAGS_WITH_VALUE.has(token)) index += 1;
       continue;
     }
     if (token === "run" && !explicitRun) {
@@ -11004,23 +11010,19 @@ function parseSegment(segment) {
   return void 0;
 }
 function classify(manager, candidate, explicitRun, raw) {
-  if (candidate === "" || PLACEHOLDER.test(candidate) || candidate.includes("/"))
-    return void 0;
+  if (candidate === "" || PLACEHOLDER.test(candidate) || candidate.includes("/")) return void 0;
   if (explicitRun) {
     return { script: candidate, manager, confidence: "high", raw };
   }
   if (LIFECYCLE_SHORTCUTS.has(candidate)) {
     return { script: candidate, manager, confidence: "high", raw };
   }
-  if (PACKAGE_MANAGER_BUILTINS.has(candidate))
-    return void 0;
-  if (manager === "npm")
-    return void 0;
+  if (PACKAGE_MANAGER_BUILTINS.has(candidate)) return void 0;
+  if (manager === "npm") return void 0;
   return { script: candidate, manager, confidence: "medium", raw };
 }
 function isWorkspaceRedirect(token) {
-  if (!token.startsWith("-"))
-    return false;
+  if (!token.startsWith("-")) return false;
   const name = token.split("=", 1)[0] ?? token;
   return WORKSPACE_REDIRECT_FLAGS.has(name);
 }
@@ -11030,10 +11032,8 @@ function tokenize(input2) {
   let quote;
   for (const char of input2) {
     if (quote) {
-      if (char === quote)
-        quote = void 0;
-      else
-        current += char;
+      if (char === quote) quote = void 0;
+      else current += char;
       continue;
     }
     if (char === '"' || char === "'") {
@@ -11041,19 +11041,17 @@ function tokenize(input2) {
       continue;
     }
     if (/\s/.test(char)) {
-      if (current !== "")
-        tokens.push(current);
+      if (current !== "") tokens.push(current);
       current = "";
       continue;
     }
     current += char;
   }
-  if (current !== "")
-    tokens.push(current);
+  if (current !== "") tokens.push(current);
   return tokens;
 }
 
-// packages/adapter-node/dist/checks/docs-drift.js
+// packages/adapter-node/src/checks/docs-drift.ts
 var docsScriptDriftCheck = {
   id: "node/docs-script-drift",
   title: "Documented commands match the declared scripts",
@@ -11069,8 +11067,7 @@ var docsScriptDriftCheck = {
     if (gaps.length > 0) {
       return inconclusive(`Documentation could not be fully read — ${describeGaps(gaps)}`);
     }
-    if (facts.documents.length === 0)
-      return notApplicable("No documentation files were found");
+    if (facts.documents.length === 0) return notApplicable("No documentation files were found");
     const names = Object.keys(facts.scripts);
     if (names.length === 0) {
       return notApplicable("package.json declares no scripts to compare documentation against");
@@ -11080,11 +11077,9 @@ var docsScriptDriftCheck = {
     for (const document of facts.documents) {
       for (const command of document.commands) {
         for (const reference of parseScriptReferences(command.command)) {
-          if (facts.scripts[reference.script] !== void 0)
-            continue;
+          if (facts.scripts[reference.script] !== void 0) continue;
           const key = `${document.file}:${command.line}:${reference.script}`;
-          if (seen.has(key))
-            continue;
+          if (seen.has(key)) continue;
           seen.add(key);
           const suggestion = closestMatch(reference.script, names);
           findings.push({
@@ -11116,7 +11111,7 @@ var docsScriptDriftCheck = {
   }
 };
 
-// packages/adapter-node/dist/facts/dotenv.js
+// packages/adapter-node/src/facts/dotenv.ts
 var DECLARATION = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_.]*)\s*=(.*)$/;
 function parseDotenvKeys(path6, text) {
   const entries = [];
@@ -11124,12 +11119,10 @@ function parseDotenvKeys(path6, text) {
   const lines = text.split(/\r?\n/);
   for (const [index, line] of lines.entries()) {
     const trimmed = line.trim();
-    if (trimmed === "" || trimmed.startsWith("#"))
-      continue;
+    if (trimmed === "" || trimmed.startsWith("#")) continue;
     const match = DECLARATION.exec(line);
     const key = match?.[1];
-    if (!key)
-      continue;
+    if (!key) continue;
     const empty = stripInlineComment(match[2] ?? "").trim() === "";
     entries.push({ key, line: index + 1, empty });
     keys.add(key);
@@ -11138,8 +11131,7 @@ function parseDotenvKeys(path6, text) {
 }
 function stripInlineComment(value) {
   const trimmed = value.trim();
-  if (trimmed.startsWith('"') || trimmed.startsWith("'"))
-    return trimmed;
+  if (trimmed.startsWith('"') || trimmed.startsWith("'")) return trimmed;
   const hash = trimmed.indexOf(" #");
   return hash === -1 ? trimmed : trimmed.slice(0, hash);
 }
@@ -11188,21 +11180,18 @@ var IMPORT_META_BUILTINS = /* @__PURE__ */ new Set([
   "SSR"
 ]);
 function isAmbientEnvVar(name, form = "process.env") {
-  if (AMBIENT_ENV_VARS.has(name))
-    return true;
-  if (AMBIENT_ENV_PREFIXES.some((prefix) => name.startsWith(prefix)))
-    return true;
+  if (AMBIENT_ENV_VARS.has(name)) return true;
+  if (AMBIENT_ENV_PREFIXES.some((prefix) => name.startsWith(prefix))) return true;
   return form === "import.meta.env" && IMPORT_META_BUILTINS.has(name);
 }
 
-// packages/adapter-node/dist/facts/mask-comments.js
+// packages/adapter-node/src/facts/mask-comments.ts
 function maskComments(source) {
   const output = source.split("");
   let index = 0;
   const blank = (from, to) => {
     for (let i = from; i < to && i < output.length; i += 1) {
-      if (output[i] !== "\n")
-        output[i] = " ";
+      if (output[i] !== "\n") output[i] = " ";
     }
   };
   while (index < source.length) {
@@ -11210,8 +11199,7 @@ function maskComments(source) {
     const next = source[index + 1];
     if (char === "/" && next === "/") {
       let end = source.indexOf("\n", index);
-      if (end === -1)
-        end = source.length;
+      if (end === -1) end = source.length;
       blank(index, end);
       index = end;
       continue;
@@ -11239,16 +11227,14 @@ function skipString(source, start, quote) {
       index += 2;
       continue;
     }
-    if (char === quote)
-      return index + 1;
-    if (char === "\n" && quote !== "`")
-      return index;
+    if (char === quote) return index + 1;
+    if (char === "\n" && quote !== "`") return index;
     index += 1;
   }
   return index;
 }
 
-// packages/adapter-node/dist/facts/workspace-boundary.js
+// packages/adapter-node/src/facts/workspace-boundary.ts
 var MAX_NESTED_PROJECT_MANIFESTS = 500;
 async function findNestedProjectDirs(fs5, options = {}) {
   const walked = await fs5.walk({
@@ -11275,7 +11261,7 @@ function isInsideNestedProject(file, nestedDirs) {
   return nestedDirs.some((dir) => file.startsWith(dir));
 }
 
-// packages/adapter-node/dist/facts/env-usage.js
+// packages/adapter-node/src/facts/env-usage.ts
 var SOURCE_EXTENSIONS = [
   ".ts",
   ".tsx",
@@ -11336,8 +11322,7 @@ async function scanEnvUsage(fs5, options = {}) {
     });
   }
   for (const file of walked.files) {
-    if (isInsideNestedProject(file, excludeDirs))
-      continue;
+    if (isInsideNestedProject(file, excludeDirs)) continue;
     let text;
     try {
       text = await fs5.readText(file);
@@ -11355,15 +11340,12 @@ async function scanEnvUsage(fs5, options = {}) {
       let match;
       while ((match = pattern.exec(masked)) !== null) {
         const captured = match[1];
-        if (!captured)
-          continue;
-        if (!destructuring && isWrite(masked, match.index, match.index + match[0].length))
-          continue;
+        if (!captured) continue;
+        if (!destructuring && isWrite(masked, match.index, match.index + match[0].length)) continue;
         const line = offsetToPosition(masked, match.index).line;
         for (const name of destructuring ? destructuredNames(captured) : [captured]) {
           const dedupeKey = `${name}::${file}::${line}`;
-          if (seen.has(dedupeKey))
-            continue;
+          if (seen.has(dedupeKey)) continue;
           seen.add(dedupeKey);
           usages.push({ name, file, line, form });
         }
@@ -11373,23 +11355,20 @@ async function scanEnvUsage(fs5, options = {}) {
   return { usages, gaps };
 }
 function isWrite(text, start, end) {
-  if (/^\s*(?:=(?!=)|\?\?=|\|\|=)/.test(text.slice(end, end + 16)))
-    return true;
+  if (/^\s*(?:=(?!=)|\?\?=|\|\|=)/.test(text.slice(end, end + 16))) return true;
   return /\bdelete\s+$/.test(text.slice(Math.max(0, start - 16), start));
 }
 function groupUsagesByName(usages) {
   const grouped = /* @__PURE__ */ new Map();
   for (const usage of usages) {
     const bucket = grouped.get(usage.name);
-    if (bucket)
-      bucket.push(usage);
-    else
-      grouped.set(usage.name, [usage]);
+    if (bucket) bucket.push(usage);
+    else grouped.set(usage.name, [usage]);
   }
   return grouped;
 }
 
-// packages/adapter-node/dist/checks/env-contract.js
+// packages/adapter-node/src/checks/env-contract.ts
 var envContractCheck = {
   id: "node/env-contract",
   title: "Environment variables used by the code are documented",
@@ -11427,8 +11406,7 @@ var envContractCheck = {
       return found(findings);
     }
     for (const name of usedNames) {
-      if (example.keys.has(name))
-        continue;
+      if (example.keys.has(name)) continue;
       findings.push({
         code: "node/env-var-undocumented",
         severity: "warning",
@@ -11454,18 +11432,20 @@ var envLocalFileCheck = {
   run(facts, context) {
     const gaps = gapsFor(facts.gaps, "env-template", "env-local");
     if (gaps.length > 0) {
-      return inconclusive(`The local environment could not be fully inspected — ${describeGaps(gaps)}`);
+      return inconclusive(
+        `The local environment could not be fully inspected — ${describeGaps(gaps)}`
+      );
     }
     const example = facts.envExampleFile;
-    if (!example)
-      return notApplicable("No environment template is committed");
+    if (!example) return notApplicable("No environment template is committed");
     const usages = groupUsagesByName(facts.envUsages);
     const localFiles = facts.envLocalFiles;
     const optional = context.config.optionalEnvVars;
     if (localFiles.length === 0) {
-      const unprovided = example.entries.filter((entry) => !optional.has(entry.key) && !context.environment.hasEnvVar(entry.key));
-      if (unprovided.length === 0)
-        return pass();
+      const unprovided = example.entries.filter(
+        (entry) => !optional.has(entry.key) && !context.environment.hasEnvVar(entry.key)
+      );
+      if (unprovided.length === 0) return pass();
       return found([
         {
           code: "node/env-file-missing",
@@ -11483,13 +11463,10 @@ var envLocalFileCheck = {
     const findings = [];
     const localPaths = localFiles.map((file) => file.path).join(", ");
     for (const entry of example.entries) {
-      if (optional.has(entry.key))
-        continue;
+      if (optional.has(entry.key)) continue;
       const state = facts.envLocalKeys.get(entry.key) ?? "absent";
-      if (state === "set")
-        continue;
-      if (context.environment.hasEnvVar(entry.key))
-        continue;
+      if (state === "set") continue;
+      if (context.environment.hasEnvVar(entry.key)) continue;
       const usedInCode = usages.has(entry.key);
       const empty = state === "empty";
       findings.push({
@@ -11511,32 +11488,31 @@ var envLocalFileCheck = {
   }
 };
 function usageEvidence(usage, name) {
-  if (!usage)
-    return [];
+  if (!usage) return [];
   return [{ file: usage.file, line: usage.line, detail: `reads ${name}` }];
 }
 
-// packages/adapter-node/dist/facts/node-version.js
+// packages/adapter-node/src/facts/node-version.ts
 var import_semver = __toESM(require_semver2(), 1);
 function toRange(raw) {
   const value = raw.trim().replace(/^v/i, "");
-  if (value === "")
-    return { unresolvedReason: "declaration is empty" };
+  if (value === "") return { unresolvedReason: "declaration is empty" };
   if (/^(lts\/.*|lts|latest|node|stable|system|current)$/i.test(value)) {
     return {
       unresolvedReason: `alias "${raw.trim()}" cannot be resolved without a network lookup`
     };
   }
   const range = import_semver.default.validRange(value);
-  if (range === null)
-    return { unresolvedReason: `"${raw.trim()}" is not a valid semver range` };
+  if (range === null) return { unresolvedReason: `"${raw.trim()}" is not a valid semver range` };
   return { range };
 }
 function buildRequirement(source, file, raw) {
   return { source, file, raw: raw.trim(), ...toRange(raw) };
 }
 function resolvedRequirements(requirements) {
-  return requirements.filter((requirement) => requirement.range !== void 0);
+  return requirements.filter(
+    (requirement) => requirement.range !== void 0
+  );
 }
 function findConflicts(requirements) {
   const resolved = resolvedRequirements(requirements);
@@ -11545,8 +11521,7 @@ function findConflicts(requirements) {
     for (let j = i + 1; j < resolved.length; j += 1) {
       const a = resolved[i];
       const b = resolved[j];
-      if (!a || !b)
-        continue;
+      if (!a || !b) continue;
       if (!import_semver.default.intersects(a.range, b.range, { loose: true })) {
         conflicts.push({ a, b });
       }
@@ -11556,8 +11531,7 @@ function findConflicts(requirements) {
 }
 function unsatisfied(version, requirements) {
   const coerced = import_semver.default.valid(version) ?? import_semver.default.coerce(version)?.version;
-  if (!coerced)
-    return [];
+  if (!coerced) return [];
   return resolvedRequirements(requirements).filter(
     // `includePrerelease` so that running Node 25.0.0-rc.1 is not reported as
     // failing `>=20`. semver excludes prereleases by default, which is right
@@ -11566,7 +11540,7 @@ function unsatisfied(version, requirements) {
   );
 }
 
-// packages/adapter-node/dist/checks/node-version.js
+// packages/adapter-node/src/checks/node-version.ts
 var nodeVersionDeclarationCheck = {
   id: "node/node-version-declaration",
   title: "Required Node.js version is declared consistently",
@@ -11579,7 +11553,9 @@ var nodeVersionDeclarationCheck = {
     const findings = [];
     const gaps = gapsFor(facts.gaps, "node-version", "package.json");
     if (gaps.length > 0 && requirements.length === 0) {
-      return inconclusive(`The declared Node.js version could not be read — ${describeGaps(gaps)}`);
+      return inconclusive(
+        `The declared Node.js version could not be read — ${describeGaps(gaps)}`
+      );
     }
     if (requirements.length === 0) {
       return found([
@@ -11597,8 +11573,7 @@ var nodeVersionDeclarationCheck = {
       ]);
     }
     for (const requirement of requirements) {
-      if (requirement.range !== void 0)
-        continue;
+      if (requirement.range !== void 0) continue;
       findings.push({
         code: "node/node-version-unresolvable",
         severity: "warning",
@@ -11627,10 +11602,11 @@ var nodeVersionDeclarationCheck = {
         ]
       });
     }
-    if (findings.length > 0)
-      return found(findings);
+    if (findings.length > 0) return found(findings);
     if (gaps.length > 0) {
-      return inconclusive(`Some Node.js version declarations could not be read — ${describeGaps(gaps)}`);
+      return inconclusive(
+        `Some Node.js version declarations could not be read — ${describeGaps(gaps)}`
+      );
     }
     return pass();
   }
@@ -11645,34 +11621,39 @@ var nodeVersionRuntimeCheck = {
   run(facts, context) {
     const gaps = gapsFor(facts.gaps, "node-version", "package.json");
     if (gaps.length > 0) {
-      return inconclusive(`The declared Node.js version could not be read in full — ${describeGaps(gaps)}`);
+      return inconclusive(
+        `The declared Node.js version could not be read in full — ${describeGaps(gaps)}`
+      );
     }
     const requirements = resolvedRequirements(facts.nodeVersionRequirements);
     if (requirements.length === 0) {
       return notApplicable("No comparable Node.js requirement is declared");
     }
     if (findConflicts(requirements).length > 0) {
-      return inconclusive("The repository declares conflicting Node.js requirements, so there is no single expectation to verify");
+      return inconclusive(
+        "The repository declares conflicting Node.js requirements, so there is no single expectation to verify"
+      );
     }
     const current = context.environment.nodeVersion();
     const failures = unsatisfied(current, requirements);
-    if (failures.length === 0)
-      return pass();
-    return found(failures.map((requirement) => ({
-      code: "node/node-version-mismatch",
-      severity: "error",
-      confidence: "high",
-      message: `Node.js ${current} does not satisfy "${requirement.raw}" from ${requirement.source}`,
-      explanation: "Installing or running the project with an unsupported runtime typically fails with a syntax or native-module error that does not name the real cause.",
-      expected: requirement.raw,
-      actual: current,
-      remediation: `Switch to a Node.js version matching "${requirement.raw}" (for example with nvm, fnm, Volta or mise) before installing dependencies.`,
-      evidence: [{ file: requirement.file, excerpt: requirement.raw, detail: requirement.source }]
-    })));
+    if (failures.length === 0) return pass();
+    return found(
+      failures.map((requirement) => ({
+        code: "node/node-version-mismatch",
+        severity: "error",
+        confidence: "high",
+        message: `Node.js ${current} does not satisfy "${requirement.raw}" from ${requirement.source}`,
+        explanation: "Installing or running the project with an unsupported runtime typically fails with a syntax or native-module error that does not name the real cause.",
+        expected: requirement.raw,
+        actual: current,
+        remediation: `Switch to a Node.js version matching "${requirement.raw}" (for example with nvm, fnm, Volta or mise) before installing dependencies.`,
+        evidence: [{ file: requirement.file, excerpt: requirement.raw, detail: requirement.source }]
+      }))
+    );
   }
 };
 
-// packages/adapter-node/dist/checks/package-json.js
+// packages/adapter-node/src/checks/package-json.ts
 var packageJsonCheck = {
   id: "node/package-json",
   title: "package.json is present and readable",
@@ -11752,7 +11733,7 @@ var packageJsonCheck = {
   }
 };
 
-// packages/adapter-node/dist/checks/package-manager.js
+// packages/adapter-node/src/checks/package-manager.ts
 var packageManagerCheck = {
   id: "node/package-manager",
   title: "Package manager and lockfile are consistent",
@@ -11763,7 +11744,9 @@ var packageManagerCheck = {
   run(facts) {
     const gaps = gapsFor(facts.gaps, "package.json");
     if (gaps.length > 0) {
-      return inconclusive(`The manifest could not be read, so the package manager contract is unknown — ${describeGaps(gaps)}`);
+      return inconclusive(
+        `The manifest could not be read, so the package manager contract is unknown — ${describeGaps(gaps)}`
+      );
     }
     const findings = [];
     const declared = facts.declaredPackageManager;
@@ -11827,14 +11810,14 @@ var packageManagerAvailableCheck = {
   async run(facts, context) {
     const gaps = gapsFor(facts.gaps, "package.json");
     if (gaps.length > 0) {
-      return inconclusive(`The manifest could not be read, so the required package manager is unknown — ${describeGaps(gaps)}`);
+      return inconclusive(
+        `The manifest could not be read, so the required package manager is unknown — ${describeGaps(gaps)}`
+      );
     }
     const resolved = resolveManager(facts);
-    if (!resolved)
-      return notApplicable("No package manager could be determined");
+    if (!resolved) return notApplicable("No package manager could be determined");
     const location2 = await context.environment.which(binaryFor(resolved.name));
-    if (location2)
-      return pass();
+    if (location2) return pass();
     return found([
       {
         code: "node/package-manager-unavailable",
@@ -11861,11 +11844,9 @@ function resolveManager(facts) {
     };
   }
   const managers = new Set(facts.lockfiles.map((lock) => lock.manager));
-  if (managers.size !== 1)
-    return void 0;
+  if (managers.size !== 1) return void 0;
   const lockfile = facts.lockfiles[0];
-  if (!lockfile)
-    return void 0;
+  if (!lockfile) return void 0;
   return {
     name: lockfile.manager,
     confidence: "medium",
@@ -11879,7 +11860,7 @@ function manifestEvidence(facts, path6, detail) {
   return location2 ? { file: "package.json", line: location2.key.line, column: location2.key.column, detail } : { file: "package.json", detail };
 }
 
-// packages/adapter-node/dist/checks/scripts.js
+// packages/adapter-node/src/checks/scripts.ts
 var scriptsCheck = {
   id: "node/scripts",
   title: "Declared scripts are usable and self-consistent",
@@ -11925,10 +11906,8 @@ var scriptsCheck = {
         continue;
       }
       for (const reference of parseScriptReferences(body)) {
-        if (reference.script === name)
-          continue;
-        if (scripts[reference.script] !== void 0)
-          continue;
+        if (reference.script === name) continue;
+        if (scripts[reference.script] !== void 0) continue;
         const suggestion = closestMatch(reference.script, names);
         findings.push({
           code: "node/script-reference-missing",
@@ -11949,7 +11928,7 @@ var scriptsCheck = {
   }
 };
 
-// packages/adapter-node/dist/facts/markdown.js
+// packages/adapter-node/src/facts/markdown.ts
 var SESSION_LANGUAGES = /* @__PURE__ */ new Set([
   "console",
   "shell-session",
@@ -11990,8 +11969,7 @@ function extractDocumentedCommands(markdown) {
       }
       if (fenceIsShell) {
         const command = normalizeShellLine(line, fenceIsSession);
-        if (command)
-          commands.push({ line: index + 1, command, source: "code-block" });
+        if (command) commands.push({ line: index + 1, command, source: "code-block" });
       }
       continue;
     }
@@ -12014,16 +11992,13 @@ function extractDocumentedCommands(markdown) {
 function closesFence(line, openingMarker) {
   const trimmed = line.trim();
   const char = openingMarker[0];
-  if (char === void 0 || trimmed.length < openingMarker.length)
-    return false;
+  if (char === void 0 || trimmed.length < openingMarker.length) return false;
   return [...trimmed].every((current) => current === char);
 }
 function normalizeShellLine(line, sessionFence) {
   const trimmed = line.trim();
-  if (trimmed === "" || trimmed.startsWith("#"))
-    return void 0;
-  if (sessionFence && !/^[$>]\s/.test(trimmed))
-    return void 0;
+  if (trimmed === "" || trimmed.startsWith("#")) return void 0;
+  if (sessionFence && !/^[$>]\s/.test(trimmed)) return void 0;
   return stripPrompt(trimmed);
 }
 function stripPrompt(value) {
@@ -12042,47 +12017,41 @@ var ROOT_DOC_FILES = [
   ".github/CONTRIBUTING.md"
 ];
 
-// packages/adapter-node/dist/facts/package-json.js
+// packages/adapter-node/src/facts/package-json.ts
 function readScripts(data) {
   const scripts = data.scripts;
-  if (!isPlainObject2(scripts))
-    return {};
+  if (!isPlainObject2(scripts)) return {};
   const result = {};
   for (const [name, value] of Object.entries(scripts)) {
-    if (typeof value === "string")
-      result[name] = value;
+    if (typeof value === "string") result[name] = value;
   }
   return result;
 }
 function readEnginesNode(data) {
   const engines = data.engines;
-  if (!isPlainObject2(engines))
-    return void 0;
+  if (!isPlainObject2(engines)) return void 0;
   const node = engines["node"];
   return typeof node === "string" ? node : void 0;
 }
 function readVoltaNode(data) {
   const volta = data.volta;
-  if (!isPlainObject2(volta))
-    return void 0;
+  if (!isPlainObject2(volta)) return void 0;
   const node = volta["node"];
   return typeof node === "string" ? node : void 0;
 }
 function readPackageManagerField(data) {
   const raw = data.packageManager;
-  if (typeof raw !== "string" || raw.trim() === "")
-    return void 0;
+  if (typeof raw !== "string" || raw.trim() === "") return void 0;
   const [spec] = raw.trim().split("+");
   const match = /^([a-z][\w-]*)(?:@(.+))?$/i.exec(spec ?? "");
-  if (!match?.[1])
-    return void 0;
+  if (!match?.[1]) return void 0;
   return match[2] === void 0 ? { name: match[1] } : { name: match[1], version: match[2] };
 }
 function isPlainObject2(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-// packages/adapter-node/dist/facts/collect.js
+// packages/adapter-node/src/facts/collect.ts
 async function collectNodeFacts({ fs: fs5, config }) {
   const gaps = [];
   const packageJson = await loadPackageJson(fs5, gaps);
@@ -12119,8 +12088,7 @@ async function collectNodeFacts({ fs: fs5, config }) {
   };
 }
 async function loadPackageJson(fs5, gaps) {
-  if (!await fs5.isFile("package.json"))
-    return { kind: "missing" };
+  if (!await fs5.isFile("package.json")) return { kind: "missing" };
   let raw;
   try {
     raw = await fs5.readText("package.json");
@@ -12149,8 +12117,7 @@ async function loadPackageJson(fs5, gaps) {
 }
 function readDeclaredPackageManager(manifest) {
   const field = readPackageManagerField(manifest);
-  if (!field || !isPackageManagerName(field.name))
-    return void 0;
+  if (!field || !isPackageManagerName(field.name)) return void 0;
   const raw = typeof manifest.packageManager === "string" ? manifest.packageManager : field.name;
   return field.version === void 0 ? { name: field.name, source: "package.json#packageManager", raw } : { name: field.name, version: field.version, source: "package.json#packageManager", raw };
 }
@@ -12170,12 +12137,10 @@ async function collectNodeVersionRequirements(fs5, manifest, gaps) {
     [".nvmrc", ".nvmrc"],
     [".node-version", ".node-version"]
   ]) {
-    if (!await fs5.isFile(file))
-      continue;
+    if (!await fs5.isFile(file)) continue;
     try {
       const content = (await fs5.readText(file)).trim();
-      if (content !== "")
-        requirements.push(buildRequirement(source, file, content));
+      if (content !== "") requirements.push(buildRequirement(source, file, content));
     } catch (error) {
       gaps.push({
         scope: "node-version",
@@ -12188,8 +12153,7 @@ async function collectNodeVersionRequirements(fs5, manifest, gaps) {
 }
 async function loadFirstDotenv(fs5, candidates, scope, gaps) {
   for (const candidate of candidates) {
-    if (!await fs5.isFile(candidate))
-      continue;
+    if (!await fs5.isFile(candidate)) continue;
     try {
       return parseDotenvKeys(candidate, await fs5.readText(candidate));
     } catch (error) {
@@ -12205,8 +12169,7 @@ async function loadFirstDotenv(fs5, candidates, scope, gaps) {
 async function loadAllDotenv(fs5, candidates, scope, gaps) {
   const files = [];
   for (const candidate of candidates) {
-    if (!await fs5.isFile(candidate))
-      continue;
+    if (!await fs5.isFile(candidate)) continue;
     try {
       files.push(parseDotenvKeys(candidate, await fs5.readText(candidate)));
     } catch (error) {
@@ -12244,12 +12207,9 @@ async function collectDocuments(fs5, gaps, ignore) {
   const seen = /* @__PURE__ */ new Set();
   for (const file of candidates) {
     const key = file.toLowerCase();
-    if (seen.has(key))
-      continue;
-    if (matchesIgnore(file, ignore))
-      continue;
-    if (!await fs5.isFile(file))
-      continue;
+    if (seen.has(key)) continue;
+    if (matchesIgnore(file, ignore)) continue;
+    if (!await fs5.isFile(file)) continue;
     seen.add(key);
     try {
       const text = await fs5.readText(file);
@@ -12265,7 +12225,7 @@ async function collectDocuments(fs5, gaps, ignore) {
   return documents;
 }
 
-// packages/adapter-node/dist/adapter.js
+// packages/adapter-node/src/adapter.ts
 var DETECTION_FILES = [
   "package.json",
   ...LOCKFILES.map((lockfile) => lockfile.file),
@@ -12289,8 +12249,7 @@ var nodeAdapter = {
   name: "Node.js",
   async detect({ fs: fs5 }) {
     for (const file of DETECTION_FILES) {
-      if (await fs5.isFile(file))
-        return true;
+      if (await fs5.isFile(file)) return true;
     }
     return false;
   },

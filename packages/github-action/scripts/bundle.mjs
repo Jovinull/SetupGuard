@@ -34,6 +34,14 @@ await mkdir(outdir, { recursive: true });
 const result = await esbuild.build({
   absWorkingDir: repoRoot,
   entryPoints: [path.join(packageRoot, 'src', 'main.ts')],
+  // Bundle the workspace packages from their TypeScript sources, not from
+  // their `dist/` (which is what their package.json `exports` point at). The
+  // `dist/` only exists after `tsc -b`, and a stale one would silently produce
+  // a stale bundle; sources are always what was reviewed.
+  alias: {
+    '@setupguard/core': path.join(repoRoot, 'packages', 'core', 'src', 'index.ts'),
+    '@setupguard/adapter-node': path.join(repoRoot, 'packages', 'adapter-node', 'src', 'index.ts'),
+  },
   outfile,
   bundle: true,
   format: 'cjs',
