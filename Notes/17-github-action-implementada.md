@@ -189,6 +189,22 @@ não tem script `dev`. A frase foi reescrita; o check não foi afrouxado. CLI
 |---|---|
 | `2cf8751` (PR #1) | matriz 6/6 e VSIX verdes; **`repository readiness` verde** (primeira execução real da Action, sobre o próprio PR); job do bundle falhou; audit falhou |
 
+| `8d14be5` (PR #1) | 9 de 10 verdes: matriz 6/6, VSIX, **bundle** e `repository readiness`; só o audit falhou (preexistente, ver abaixo) |
+
+Evidência da execução real em `8d14be5`, com `GITHUB_TOKEN` (permissões
+`Contents: read`, `PullRequests: read`, `Metadata: read`): 118 arquivos
+listados em 2 páginas, base `c7807e7` (o primeiro pai do merge commit, que é
+`main`), 64 requisições, veredito `pass` sem anotações. O runner mascarou o
+token de `stop-commands` (a linha de retomada aparece como `::***::`), e a
+retomada funcionou.
+
+Custo observado: boa parte das 64 requisições são 404 para arquivos dentro de
+projetos aninhados (`fixtures/*/src/index.js`). A varredura de fontes do
+motor lista esses arquivos e só **depois** descarta os projetos aninhados, então
+a visão da base precisa perguntar por eles. O resultado está correto, mas
+gasta requisições; passar a exclusão de projetos aninhados para dentro do
+`walk` reduziria o custo. Fica em aberto.
+
 A falha do bundle foi um defeito real: o esbuild resolvia `@setupguard/core`
 pelo `exports` do pacote, que aponta para `dist/`, inexistente sem `tsc -b`.
 A verificação em clone limpo feita antes do push não pegou isso porque rodou
