@@ -131,6 +131,35 @@ O output `result` distingue os dois.
   5xx e erro de rede; rate limit (403/429 com `x-ratelimit-remaining: 0` ou
   `retry-after`) falha na hora com o horário de reset.
 
+### A Action versus o CI deste repositório
+
+São duas garantias diferentes, e só a primeira é da Action:
+
+- **A Action** não executa nada do repositório analisado: lê arquivos, chama a
+  API com GETs, e não tem nenhuma API de execução de processo ou `eval` no
+  core, no adapter nem no próprio pacote (verificado por busca no código).
+- **O CI deste repositório** (`ci.yml`) roda `pnpm install`, lint, testes e build
+  **no checkout do PR**, ou seja, executa código do PR, como qualquer CI. E
+  `setupguard.yml` usa `uses: ./`: a Action que analisa um PR é a versão
+  daquele PR, que um fork pode alterar.
+
+O que limita esse código vindo de fork (revisão de 2026-11-02):
+
+- `pull_request`, nunca `pull_request_target`, nos dois workflows;
+- `permissions:` declarado nos dois; token observado nas execuções reais:
+  `Contents: read`, `Metadata: read` (CI) e `+ PullRequests: read` (Action);
+- nenhum `secrets.*` referenciado em workflow algum;
+- `persist-credentials: false` em todos os checkouts (no `ci.yml` desde esta
+  revisão): o token não fica em `.git/config` para o código do PR ler;
+- `allowBuilds` do pnpm só autoriza o postinstall do esbuild — mas um PR pode
+  alterar esse arquivo também; o limite real é o token só leitura e sem
+  segredos, que expira com o job.
+
+Isto **não** torna o CI imune a um fork: um PR malicioso pode consumir minutos
+de runner ou falhar os próprios jobs. Não pode escrever no repositório nem ler
+segredos por esses workflows. Consumidores que fixam
+`Jovinull/SetupGuard@<sha>` não executam código do PR na Action.
+
 ## Evidência
 
 ### Testes (locais, Windows, Node 24; e na matriz do CI)
@@ -318,21 +347,91 @@ Resolvidos 17 dos 18, sem upgrade major de nada declarado e sem override:
 esbuild não mudou; o bundle da Action ficou idêntico byte a byte; o VSIX
 continua com os mesmos sete arquivos.
 
-**Restante: `minimatch` GHSA-g3hv-75wg-m249 (moderate, publicado em
-2026-10-30).** Corrigido só em 11.0.1 (2026-10-27). Todos os consumidores aqui
-— ESLint 9 **e 10**, typescript-eslint, `@eslint/config-array`, `@vscode/vsce` —
-exigem `^3` ou `^10`; nenhum upgrade existente resolve. Forçar a 11 por
-override colocaria uma major não validada nesses pacotes (e a API da 3.x é
-incompatível). Análise de exposição:
+## Exceção de segurança: GHSA-g3hv-75wg-m249 (`minimatch`)
 
-- a 3.1.5 instalada **não contém** o código vulnerável (`firstPhasePreProcess`
-  não existe nela); a faixa `<11.0.1` do advisory é ampla demais para a 3.x;
-- a 10.2.6 contém, mas a exploração exige **padrão glob controlado por
-  atacante** com `optimizationLevel >= 2`. Aqui todos os padrões vêm da
-  configuração do próprio repositório (`eslint.config.js`, `.vscodeignore`,
-  tsconfig), em ferramentas que não rodam em produção.
+**Decisão (2026-11-02): risco aceito temporariamente, com revisão obrigatória
+até 2026-11-30.** Isto **não** corrige a vulnerabilidade: o pacote vulnerável
+continua instalado. Autorizada pelo mantenedor sob a condição de a auditoria
+demonstrar exposição baixa e nenhum caminho explorável no uso suportado; a
+evidência abaixo é o que sustenta essa condição.
 
-O job `dependency audit` continua falhando por esse advisory. Não foi
-silenciado: aceitar o risco (por exemplo `auditConfig.ignoreGhsas` com esta
-justificativa e data de revisão) é decisão do mantenedor; a alternativa é
-esperar os consumidores adotarem a 11.
+### O advisory
+
+DoS por amplificação de `globParts` (moderate, publicado em 2026-10-30, faixa
+`<11.0.1`, corrigido em 11.0.1 de 2026-10-27). Em `firstPhasePreProcess()`, a
+transformação `**/../` clona entradas dentro de um laço de ponto fixo, e
+`secondPhasePreProcess()` as compara par a par: um **padrão glob** escolhido por
+atacante consome CPU e memória.
+
+### Onde está e quem usa (`pnpm why minimatch -r`)
+
+| Versão | Consumidores | Contém o código vulnerável? |
+|---|---|---|
+| 3.1.5 | `eslint` 9.39.5, `@eslint/config-array` 0.21.2, `@eslint/eslintrc` 3.3.7 | **não**: o arquivo não tem `firstPhasePreProcess`, `secondPhasePreProcess`, `partsMatch` nem `optimizationLevel` (só uma propriedade `globParts`). A faixa `<11.0.1` do advisory é ampla demais para a linha 3.x; o aviso aqui é um casamento de faixa, não exposição |
+| 10.2.6 | `@typescript-eslint/typescript-estree` 8.70.0, `@vscode/vsce` 4.0.0 | **sim**, mas só alcançável com `optimizationLevel >= 2`; o padrão é `1` (`dist/commonjs/index.js`, `const { optimizationLevel = 1 } = this.options`) |
+
+### Os consumidores da 10.2.6 alcançam o código?
+
+- `@typescript-eslint/typescript-estree`: uma única chamada,
+  `minimatch(filePath, pattern, { dot: true })` em
+  `useProgramFromProjectService.js`, usada só com a opção `projectService` +
+  `allowDefaultProject`. Este repositório usa `parserOptions.project`: o
+  caminho nem é executado. E, se fosse, roda no nível 1.
+- `@vscode/vsce`: chamadas em `out/package.js` com
+  `const minimatchOptions = { dot: true }` — nível 1.
+- Busca em **todo** `node_modules/.pnpm`: nenhum pacote além do próprio
+  minimatch menciona `optimizationLevel`. `glob` (que usaria o nível 2 para
+  percorrer o disco) não está na árvore.
+
+Conclusão: **no uso instalado, nenhuma chamada alcança `firstPhasePreProcess`**.
+A afirmação vale para estas versões; muda se um consumidor passar a usar o
+nível 2 ou `glob` entrar na árvore — por isso a revisão tem data.
+
+### Quem controla os padrões
+
+| Entrada | Vira padrão glob? | Observação |
+|---|---|---|
+| arquivos alterados num PR | não; caminhos são o **dado** comparado (`minimatch(arquivo, padrão)`) | o custo do advisory depende do padrão, não do caminho |
+| configuração alterada num fork (`eslint.config.js`, `.vscodeignore`, `package.json#files`) | **sim** | mas um PR de fork já executa código próprio no CI (`pnpm install`, testes); controlar um padrão não dá a ele nada além disso, e o caminho vulnerável não é alcançado no nível 1. O efeito máximo seria lentidão do próprio job, limitado por `timeout-minutes` |
+| nomes de arquivo não confiáveis | não; dado | |
+| entradas externas / argumentos do GitHub Actions | não chegam a nenhum consumidor de minimatch | a Action do SetupGuard não usa minimatch; `ignore:` de `.setupguard.yml` usa o casador próprio do core, com gramática canônica restrita ([15](15-configuracao.md)), fora do escopo deste advisory |
+
+### O que é distribuído
+
+Nem `packages/github-action/dist/index.cjs` nem o `extension.cjs` do VSIX
+contêm minimatch ou brace-expansion: os únicos módulos de terceiros
+embutidos são `semver` e `yaml`. `pnpm audit --prod`: nenhuma vulnerabilidade.
+
+### Por que não corrigir de verdade
+
+Nenhum consumidor publicou versão com minimatch 11 (verificado em 2026-11-02:
+eslint 10.14.0 `^10.2.6`, `@eslint/config-array` 0.23.5 `^10.2.4`,
+`@eslint/eslintrc` 3.3.7 `^3.1.5`, typescript-estree 8.72.1 `^10.2.2`, vsce
+4.1.0 `^10.2.6`), e não há backport (3.1.5 e 10.2.6 seguem as últimas de suas
+linhas). Mesmo um override comprovadamente compatível da 10.x para 11 **não**
+zeraria o audit, porque a 3.1.5 do ESLint 9 continuaria dentro da faixa — e a
+3.x não pode ir para 11 (API incompatível). Forçar a 11 sem validar os
+consumidores foi descartado.
+
+### Como a exceção foi aplicada
+
+- `audit.ignore` em `pnpm-workspace.yaml` (chave atual do pnpm 11; verificada na
+  documentação 11.x e no código do pnpm 11.18.0), com **só** esta GHSA e um
+  comentário com a justificativa. Sem `--audit-level`, sem
+  `--ignore-unfixable`, sem `auditConfig` (nome obsoleto, que o script recusa).
+- **Escopo provado**: com a mesma configuração sobre o lockfile antigo
+  (`5d2250c`, 18 advisories), `pnpm audit` continua saindo com 1 e reportando
+  os outros 17; só este aparece como "(1 ignored)".
+- **Prazo**: `scripts/check-audit-exceptions.mjs` roda no job de audit antes de
+  `pnpm audit` e falha se a exceção passar de 2026-11-30, se uma GHSA for
+  ignorada sem registro, ou se um registro ficar sem GHSA correspondente.
+  Testado: válido até 2026-11-30, falha em 2026-12-01, falha para exceção não
+  documentada, registro obsoleto e data inválida.
+- Limite do prazo: o CI só roda em push/PR. Se nada for enviado depois de
+  2026-11-30, a falha só aparece no próximo envio.
+
+### Na revisão
+
+Verificar se algum consumidor adotou minimatch >= 11.0.1; se sim, atualizar e
+remover a exceção. Se não, repetir esta análise com as versões então
+instaladas antes de renovar a data.
