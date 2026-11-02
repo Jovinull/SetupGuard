@@ -57,6 +57,18 @@ importers:
         specifier: ^2.9.1
         version: 2.9.1
 
+  packages/github-action:
+    devDependencies:
+      '@setupguard/adapter-node':
+        specifier: workspace:*
+        version: link:../adapter-node
+      '@setupguard/core':
+        specifier: workspace:*
+        version: link:../core
+      esbuild:
+        specifier: ^0.28.2
+        version: 0.28.2
+
   packages/vscode:
     devDependencies:
       '@setupguard/adapter-node':
