@@ -218,6 +218,13 @@ não tem script `dev`. A frase foi reescrita; o check não foi afrouxado. CLI
 (estático e completo) e a Action em modo `push` sobre o repositório dão
 `READY`/`pass`.
 
+De novo na revisão de segurança: a primeira versão de
+`scripts/check-audit-exceptions.mjs` lia a data de teste de
+`process.env.SETUPGUARD_AUDIT_TODAY`, e o auto-diagnóstico passou a `WARNINGS`
+(variável lida pelo código, sem `.env.example`). Como isso não faz o CI falhar
+(avisos saem com 0), teria passado despercebido. A data virou o argumento
+`--today=`; o diagnóstico voltou a `READY`.
+
 ### Demonstração dos três vereditos com a API real
 
 Reproduzível, sem credencial (API anônima), com o bundle versionado, sobre o
