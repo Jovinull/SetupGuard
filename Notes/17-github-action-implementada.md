@@ -187,4 +187,17 @@ não tem script `dev`. A frase foi reescrita; o check não foi afrouxado. CLI
 
 | Commit | Resultado |
 |---|---|
-| — | ainda não houve push |
+| `2cf8751` (PR #1) | matriz 6/6 e VSIX verdes; **`repository readiness` verde** (primeira execução real da Action, sobre o próprio PR); job do bundle falhou; audit falhou |
+
+A falha do bundle foi um defeito real: o esbuild resolvia `@setupguard/core`
+pelo `exports` do pacote, que aponta para `dist/`, inexistente sem `tsc -b`.
+A verificação em clone limpo feita antes do push não pegou isso porque rodou
+`pnpm check` (que compila) **antes** do bundle — ordem diferente da do job.
+Corrigido em `94af336`: o script agora aponta os pacotes do workspace para o
+`src/` TypeScript, então o bundle não depende do estado do build (mesmos bytes
+com ou sem `dist/`). Reproduzido em clone limpo na ordem exata do job.
+
+O audit falhou com 18 advisories (1 low, 10 moderate, 7 high) em dependências
+de desenvolvimento (`eslint → minimatch`, `vitest → vite`). É preexistente: o
+lockfile de `main` (`c7807e7`) dá o mesmo resultado. São advisories publicados
+depois da última execução verde, em 2026-09-15, e não estão relacionados a este PR.
