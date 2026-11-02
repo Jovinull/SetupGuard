@@ -148,6 +148,48 @@ describe('source inference', () => {
 
     expect(codes(await diagnose(root))).toContain('node/env-var-undocumented');
   });
+
+  // Found running the GitHub Action on expressjs/express, whose test setup does
+  // `process.env.NO_DEPRECATION = '...'`: it was reported as a variable the
+  // project needs documented. Setting or deleting a variable is not depending on it.
+  it('does not treat writing a variable as reading it', async () => {
+    const root = await workspace({
+      ...BASE,
+      '.env.example': '',
+      'test/setup.js': [
+        "process.env.WRITTEN_PLAIN = 'test';",
+        "process.env['WRITTEN_BRACKET'] = 'x';",
+        "process.env.DEFAULTED ??= 'x';",
+        "process.env.DEFAULTED_OR ||= 'x';",
+        'delete process.env.DELETED;',
+      ].join('\n'),
+    });
+
+    const report = await diagnose(root);
+
+    expect(codes(report)).toEqual([]);
+    expect(report.results.find((r) => r.checkId === 'node/env-contract')?.status).not.toBe('warning');
+  });
+
+  it('still reports a read next to a write, and a comparison', async () => {
+    const root = await workspace({
+      ...BASE,
+      '.env.example': '',
+      'src/app.js': [
+        'process.env.MIXED = process.env.MIXED_SOURCE;',
+        "if (process.env.COMPARED === 'x') {}",
+        "if (process.env.COMPARED_LOOSE == 'x') {}",
+      ].join('\n'),
+    });
+
+    const report = await diagnose(root);
+    const messages = report.results.flatMap((r) => r.findings.map((f) => f.message)).join('\n');
+
+    expect(messages).toContain('MIXED_SOURCE');
+    expect(messages).toContain('COMPARED ');
+    expect(messages).toContain('COMPARED_LOOSE');
+    expect(messages).not.toMatch(/\bMIXED is/);
+  });
 });
 
 describe('destructured reads', () => {
