@@ -311,6 +311,8 @@ introduz um problema falha (exit 1), e uma análise incompleta não passa.
 | `8d14be5` (PR #1) | 9 de 10 verdes: matriz 6/6, VSIX, **bundle** e `repository readiness`; só o audit falhou (preexistente, ver abaixo) |
 | `5d2250c` (PR #1) | idem: 9 de 10; só o audit |
 | `42d62e2` (PR #1) | 9 de 10; o audit agora falha **só** pelo `minimatch` GHSA-g3hv-75wg-m249 (1 moderate, eram 18); Action: 129 arquivos, 69 requisições, `pass` |
+| `13c4b67` (PR #1) | idem: 9 de 10; só o audit, pelo mesmo advisory |
+| `110158b` (PR #1) | **10 de 10**. Audit: guard de exceções executado ("accepted until 2026-11-30"), `pnpm audit` completo com `1 moderate (1 ignored)`; checkouts com `persist-credentials: false`; Action: 131 arquivos, 71 requisições, `pass` |
 
 Evidência da execução real em `8d14be5`, com `GITHUB_TOKEN` (permissões
 `Contents: read`, `PullRequests: read`, `Metadata: read`): 118 arquivos
