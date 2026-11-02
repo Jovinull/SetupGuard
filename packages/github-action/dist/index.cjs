@@ -12459,6 +12459,7 @@ async function mapConcurrent(items, limit, task) {
 }
 
 // packages/github-action/src/compare.ts
+var RANK = { info: 0, warning: 1, error: 2 };
 var COMPARABLE = /* @__PURE__ */ new Set(["pass", "warning", "error", "not-applicable"]);
 function fingerprint(finding) {
   return `${finding.checkId}\0${finding.code}\0${finding.message}`;
@@ -12482,6 +12483,22 @@ function compareReports(head, base) {
     baseByFingerprint.set(key, list);
   }
   const classification = /* @__PURE__ */ new Map();
+  const escalated = /* @__PURE__ */ new Map();
+  const matched = (finding, base2) => {
+    if (RANK[finding.severity] > RANK[base2.severity]) {
+      classification.set(finding, "new");
+      escalated.set(finding, base2.severity);
+    } else {
+      classification.set(finding, "preexisting");
+    }
+  };
+  const take = (candidates, accept) => {
+    let best = -1;
+    candidates.forEach((candidate, index) => {
+      if (accept(candidate) && (best < 0 || RANK[candidate.severity] > RANK[candidates[best].severity])) best = index;
+    });
+    return best < 0 ? void 0 : candidates.splice(best, 1)[0];
+  };
   const uncomparableChecks = /* @__PURE__ */ new Set();
   const groups = /* @__PURE__ */ new Map();
   for (const finding of findings) {
@@ -12500,21 +12517,14 @@ function compareReports(head, base) {
     const unmatchedBase = [...baseByFingerprint.get(key) ?? []];
     const pending = [];
     for (const finding of group) {
-      const index = unmatchedBase.findIndex((candidate) => evidenceKey(candidate) === evidenceKey(finding));
-      if (index >= 0) {
-        unmatchedBase.splice(index, 1);
-        classification.set(finding, "preexisting");
-      } else {
-        pending.push(finding);
-      }
+      const base2 = take(unmatchedBase, (candidate) => evidenceKey(candidate) === evidenceKey(finding));
+      if (base2) matched(finding, base2);
+      else pending.push(finding);
     }
     for (const finding of pending) {
-      if (unmatchedBase.length > 0) {
-        unmatchedBase.shift();
-        classification.set(finding, "preexisting");
-      } else {
-        classification.set(finding, "new");
-      }
+      const base2 = take(unmatchedBase, () => true);
+      if (base2) matched(finding, base2);
+      else classification.set(finding, "new");
     }
   }
   for (const checkId of [...uncomparableChecks].sort()) {
@@ -12524,7 +12534,10 @@ function compareReports(head, base) {
     );
   }
   return {
-    findings: findings.map((finding) => ({ finding, classification: classification.get(finding) })),
+    findings: findings.map((finding) => {
+      const from = escalated.get(finding);
+      return { finding, classification: classification.get(finding), ...from ? { escalatedFrom: from } : {} };
+    }),
     gaps
   };
 }
@@ -13177,13 +13190,15 @@ This is not a pass: part of the diagnosis did not happen.`
     if (level === null || counts2[level] >= MAX_ANNOTATIONS_PER_LEVEL) continue;
     counts2[level] += 1;
     const evidence = primaryEvidence(item.finding);
-    const prefixLabel = analysis.mode === "full" ? "" : item.classification === "unclassified" ? "unverified · " : "new · ";
+    const prefixLabel = analysis.mode === "full" ? "" : item.classification === "unclassified" ? "unverified · " : item.escalatedFrom ? `raised to ${item.finding.severity} · ` : "new · ";
     annotations.push({
       level,
       title: `SetupGuard: ${prefixLabel}${item.finding.checkId}`,
       message: item.classification === "unclassified" ? `${describe(item.finding)}
 
-SetupGuard could not tell whether this pull request introduced it.` : describe(item.finding),
+SetupGuard could not tell whether this pull request introduced it.` : item.escalatedFrom ? `${describe(item.finding)}
+
+This was already on the base branch as a ${item.escalatedFrom}; this pull request raises it to ${item.finding.severity}.` : describe(item.finding),
       ...evidence?.file !== void 0 ? {
         file: joinPrefix(analysis.prefix, evidence.file),
         ...evidence.line !== void 0 ? { line: evidence.line } : {},
@@ -13239,9 +13254,10 @@ function renderLog(analysis) {
   const section = (title, items) => {
     if (items.length === 0) return;
     lines.push("", `${title} (${items.length}):`);
-    for (const { finding } of items) {
+    for (const { finding, escalatedFrom } of items) {
       const where = location(finding, analysis.prefix);
       lines.push(`  ${finding.severity.padEnd(7)} ${where ? `${where}  ` : ""}${finding.message}`);
+      if (escalatedFrom) lines.push(`          was a ${escalatedFrom} on the base branch; raised by this pull request`);
       if (finding.remediation) lines.push(`          fix: ${finding.remediation}`);
     }
   };
@@ -13258,9 +13274,13 @@ function escapeHtml(value) {
   return value.replace(/\s+/g, " ").replace(/[&<>"'[\]()*_`|~!#:\\]/g, (char) => `&#${char.charCodeAt(0)};`);
 }
 function findingTable(items, prefix) {
-  const rows = items.slice(0, MAX_ROWS).map(({ finding }) => {
+  const rows = items.slice(0, MAX_ROWS).map(({ finding, escalatedFrom }) => {
     const where = location(finding, prefix);
-    const detail = [finding.explanation, finding.remediation ? `Fix: ${finding.remediation}` : void 0].filter((part) => part !== void 0).map(escapeHtml).join("<br>");
+    const detail = [
+      escalatedFrom ? `Already on the base branch as a ${escalatedFrom}; raised by this pull request.` : void 0,
+      finding.explanation,
+      finding.remediation ? `Fix: ${finding.remediation}` : void 0
+    ].filter((part) => part !== void 0).map(escapeHtml).join("<br>");
     return `<tr><td>${escapeHtml(finding.severity)}</td><td><code>${escapeHtml(where || "—")}</code></td><td>${escapeHtml(finding.message)}${detail ? `<br><sub>${detail}</sub>` : ""}</td></tr>`;
   });
   const more = items.length > MAX_ROWS ? `

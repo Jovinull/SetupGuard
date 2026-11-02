@@ -155,6 +155,25 @@ describe('case 4: a problem that is already on the base branch', () => {
   });
 });
 
+describe('a pre-existing warning that the pull request makes blocking', () => {
+  // The base README says `pnpm dev` (implicit form: warning); the pull request
+  // rewrites it to `pnpm run dev` (explicit: error). The engine gives both the
+  // same message, so identity alone calls it pre-existing — yet the pull
+  // request is what turns the repository from WARNINGS into BLOCKED.
+  it('fails, and says the problem was already there as a warning', async () => {
+    const outcome = await run('severity-raised');
+    expect(outcome.analysis.base?.readiness).toBe('WARNINGS');
+    expect(outcome.analysis.head?.readiness).toBe('BLOCKED');
+    expect(outcome.analysis.result).toBe('fail');
+    const raised = byClass(outcome.analysis, 'new');
+    expect(raised).toHaveLength(1);
+    expect(raised[0]!.escalatedFrom).toBe('warning');
+    expect(commandLines(outcome.stdout)).toContainEqual(
+      expect.stringMatching(/^::error title=SetupGuard%3A raised to error · node\/docs-script-drift,file=README\.md,line=\d+::.*was already on the base branch as a warning/),
+    );
+  });
+});
+
 describe('case 5: hostile content in the pull request', () => {
   it('cannot inject workflow commands, outputs or markup', async () => {
     const outcome = await run('malicious');

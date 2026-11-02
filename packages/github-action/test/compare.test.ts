@@ -69,9 +69,22 @@ describe('compareReports', () => {
     expect(classes(head, base)).toEqual(['new', 'preexisting']);
   });
 
-  it('does not call a severity change a new problem', () => {
+  it('counts a problem whose severity the pull request raised as new, and records from what', () => {
     const base = report([finding('run "npm x"', 3, { severity: 'warning' })]);
-    expect(classes(report([finding('run "npm x"', 3)]), base)).toEqual(['preexisting']);
+    const comparison = compareReports(report([finding('run "npm x"', 3)]), base);
+    expect(comparison.findings.map((f) => [f.classification, f.escalatedFrom])).toEqual([['new', 'warning']]);
+  });
+
+  it('keeps a problem whose severity was lowered as pre-existing', () => {
+    const base = report([finding('run "npm x"', 3)]);
+    const comparison = compareReports(report([finding('run "npm x"', 3, { severity: 'warning' })]), base);
+    expect(comparison.findings.map((f) => [f.classification, f.escalatedFrom])).toEqual([['preexisting', undefined]]);
+  });
+
+  it('matches an unchanged error to the base error, not to a less severe twin', () => {
+    const base = report([finding('run "npm x"', 3, { severity: 'warning' }), finding('run "npm x"', 3)]);
+    const head = report([finding('run "npm x"', 3)]);
+    expect(compareReports(head, base).findings.map((f) => f.classification)).toEqual(['preexisting']);
   });
 
   it.each<CheckStatus>(['inconclusive', 'internal-error', 'skipped'])(
