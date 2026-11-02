@@ -67,7 +67,8 @@ Diferenças em relação ao layout ilustrativo de
   (`adapter-node`) já cobre npm/pnpm/Yarn/Bun/dotenv/Markdown, porque essas
   convenções compartilham o mesmo modelo de fatos. Dividir antes de haver um
   segundo ecossistema seria separação sem necessidade;
-- `github-action/` ainda não existe.
+- `github-action/` foi adicionado depois deste marco; ver
+  [17-github-action-implementada.md](17-github-action-implementada.md).
 
 ## Decisões de ferramentas
 
@@ -408,7 +409,9 @@ resultado correto e estável lá.
   e comandos com placeholders (`<...>`, `${...}`) são descartados.
 - **Variáveis de ambiente**: nomes vindos de `process.env.X`,
   `process.env['X']` e `import.meta.env.X`. Variáveis ambientais (`NODE_ENV`,
-  `CI`, `PATH`, …) nunca são cobradas da documentação.
+  `CI`, `PATH`, …) nunca são cobradas da documentação. Escrita não é leitura:
+  `process.env.X = v`, `??=`, `||=` e `delete process.env.X` não contam como
+  dependência (falso positivo encontrado no Express, 2026-11-02).
 - **Fronteira de projeto**: diretórios com `package.json` próprio são excluídos
   da varredura de código-fonte. Sem essa regra, o próprio repositório do
   SetupGuard reportava as variáveis das suas fixtures como não documentadas —
@@ -498,7 +501,8 @@ lista de watchers são puros e testados em Node.
 
 ## Testes
 
-Vitest, 458 testes em 27 arquivos, executando contra o `src` (sem build prévio).
+Vitest, 458 testes em 27 arquivos ao fim deste marco; 600 em 32 arquivos depois da
+GitHub Action ([17](17-github-action-implementada.md)). Executam contra o `src` (sem build prévio).
 O único que não roda contra o `src` é `packages/vscode/test/bundle.test.ts`, que
 carrega o bundle da extensão e se pula quando ele não existe.
 

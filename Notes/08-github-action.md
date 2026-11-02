@@ -1,5 +1,10 @@
 # GitHub Action e CI
 
+> **Implementada em 2026-11-02.** O que existe de fato, as decisões tomadas e a
+> evidência estão em [17-github-action-implementada.md](17-github-action-implementada.md).
+> Este documento preserva a proposta original; as "decisões em aberto" abaixo
+> foram, em sua maioria, fechadas lá.
+
 ## Papel
 
 A GitHub Action leva o mesmo contrato de readiness aos pull requests. Ela detecta regressões operacionais antes do merge, como mudança em scripts sem atualização da documentação ou variável usada que falta no exemplo de ambiente.
