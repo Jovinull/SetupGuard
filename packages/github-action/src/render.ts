@@ -75,14 +75,22 @@ export function buildAnnotations(analysis: Analysis): Annotation[] {
     counts[level] += 1;
     const evidence = primaryEvidence(item.finding);
     const prefixLabel =
-      analysis.mode === 'full' ? '' : item.classification === 'unclassified' ? 'unverified · ' : 'new · ';
+      analysis.mode === 'full'
+        ? ''
+        : item.classification === 'unclassified'
+          ? 'unverified · '
+          : item.escalatedFrom
+            ? `raised to ${item.finding.severity} · `
+            : 'new · ';
     annotations.push({
       level,
       title: `SetupGuard: ${prefixLabel}${item.finding.checkId}`,
       message:
         item.classification === 'unclassified'
           ? `${describe(item.finding)}\n\nSetupGuard could not tell whether this pull request introduced it.`
-          : describe(item.finding),
+          : item.escalatedFrom
+            ? `${describe(item.finding)}\n\nThis was already on the base branch as a ${item.escalatedFrom}; this pull request raises it to ${item.finding.severity}.`
+            : describe(item.finding),
       ...(evidence?.file !== undefined
         ? {
             file: joinPrefix(analysis.prefix, evidence.file),
@@ -154,9 +162,10 @@ export function renderLog(analysis: Analysis): string {
   const section = (title: string, items: readonly ClassifiedFinding[]) => {
     if (items.length === 0) return;
     lines.push('', `${title} (${items.length}):`);
-    for (const { finding } of items) {
+    for (const { finding, escalatedFrom } of items) {
       const where = location(finding, analysis.prefix);
       lines.push(`  ${finding.severity.padEnd(7)} ${where ? `${where}  ` : ''}${finding.message}`);
+      if (escalatedFrom) lines.push(`          was a ${escalatedFrom} on the base branch; raised by this pull request`);
       if (finding.remediation) lines.push(`          fix: ${finding.remediation}`);
     }
   };
@@ -185,9 +194,13 @@ export function escapeHtml(value: string): string {
 }
 
 function findingTable(items: readonly ClassifiedFinding[], prefix: string): string {
-  const rows = items.slice(0, MAX_ROWS).map(({ finding }) => {
+  const rows = items.slice(0, MAX_ROWS).map(({ finding, escalatedFrom }) => {
     const where = location(finding, prefix);
-    const detail = [finding.explanation, finding.remediation ? `Fix: ${finding.remediation}` : undefined]
+    const detail = [
+      escalatedFrom ? `Already on the base branch as a ${escalatedFrom}; raised by this pull request.` : undefined,
+      finding.explanation,
+      finding.remediation ? `Fix: ${finding.remediation}` : undefined,
+    ]
       .filter((part): part is string => part !== undefined)
       .map(escapeHtml)
       .join('<br>');

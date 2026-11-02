@@ -1,4 +1,4 @@
-import { allFindings, type CheckStatus, type Finding, type Report } from '@setupguard/core';
+import { allFindings, type CheckStatus, type Finding, type Report, type Severity } from '@setupguard/core';
 
 /**
  * What counts as a regression.
@@ -10,9 +10,13 @@ import { allFindings, type CheckStatus, type Finding, type Report } from '@setup
  *
  * Identity is `checkId + code + message`. Line numbers are deliberately not
  * part of it: inserting a paragraph above an old README problem moves the
- * problem, it does not create it. Severity is not part of it either: a
- * configuration change that turns an old warning into an error has not
- * introduced the problem.
+ * problem, it does not create it. Severity is not part of the identity
+ * either, but it is compared once two occurrences are matched: when the base
+ * had the problem at a **lower** severity, the pull request is what raised it
+ * — for example by rewriting `pnpm dev` (a warning) as `pnpm run dev` (an
+ * error), which the engine describes with the same message. Such a finding
+ * counts as new at its new severity and carries `escalatedFrom`. A lowered
+ * severity is still pre-existing.
  *
  * When the same identity occurs more often on the pull request than on the
  * base, only the surplus is new. Which occurrences form the surplus is decided
@@ -26,7 +30,11 @@ export type Classification = 'new' | 'preexisting' | 'unclassified';
 export interface ClassifiedFinding {
   readonly finding: Finding;
   readonly classification: Classification;
+  /** Set when the base had the same problem at this lower severity. */
+  readonly escalatedFrom?: Severity;
 }
+
+const RANK: Record<Severity, number> = { info: 0, warning: 1, error: 2 };
 
 export interface Comparison {
   readonly findings: readonly ClassifiedFinding[];
@@ -66,6 +74,25 @@ export function compareReports(head: Report, base: Report): Comparison {
   }
 
   const classification = new Map<Finding, Classification>();
+  const escalated = new Map<Finding, Severity>();
+  // Matched to a base occurrence: pre-existing, unless the base was less severe.
+  const matched = (finding: Finding, base: Finding): void => {
+    if (RANK[finding.severity] > RANK[base.severity]) {
+      classification.set(finding, 'new');
+      escalated.set(finding, base.severity);
+    } else {
+      classification.set(finding, 'preexisting');
+    }
+  };
+  // Among equivalent base occurrences, take the most severe, so an unchanged
+  // error is never reported as raised just because a warning came first.
+  const take = (candidates: Finding[], accept: (candidate: Finding) => boolean): Finding | undefined => {
+    let best = -1;
+    candidates.forEach((candidate, index) => {
+      if (accept(candidate) && (best < 0 || RANK[candidate.severity] > RANK[candidates[best]!.severity])) best = index;
+    });
+    return best < 0 ? undefined : candidates.splice(best, 1)[0];
+  };
   const uncomparableChecks = new Set<string>();
 
   const groups = new Map<string, Finding[]>();
@@ -87,23 +114,16 @@ export function compareReports(head: Report, base: Report): Comparison {
     const pending: Finding[] = [];
     // Pass 1: same evidence (file and quoted text), wherever the line moved.
     for (const finding of group) {
-      const index = unmatchedBase.findIndex((candidate) => evidenceKey(candidate) === evidenceKey(finding));
-      if (index >= 0) {
-        unmatchedBase.splice(index, 1);
-        classification.set(finding, 'preexisting');
-      } else {
-        pending.push(finding);
-      }
+      const base = take(unmatchedBase, (candidate) => evidenceKey(candidate) === evidenceKey(finding));
+      if (base) matched(finding, base);
+      else pending.push(finding);
     }
     // Pass 2: same identity, different evidence — still the same problem, as
     // long as the base has occurrences left to account for it.
     for (const finding of pending) {
-      if (unmatchedBase.length > 0) {
-        unmatchedBase.shift();
-        classification.set(finding, 'preexisting');
-      } else {
-        classification.set(finding, 'new');
-      }
+      const base = take(unmatchedBase, () => true);
+      if (base) matched(finding, base);
+      else classification.set(finding, 'new');
     }
   }
 
@@ -117,7 +137,10 @@ export function compareReports(head: Report, base: Report): Comparison {
   }
 
   return {
-    findings: findings.map((finding) => ({ finding, classification: classification.get(finding)! })),
+    findings: findings.map((finding) => {
+      const from = escalated.get(finding);
+      return { finding, classification: classification.get(finding)!, ...(from ? { escalatedFrom: from } : {}) };
+    }),
     gaps,
   };
 }
