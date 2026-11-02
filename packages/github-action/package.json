@@ -1,0 +1,19 @@
+{
+  "name": "@setupguard/github-action",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SetupGuard GitHub Action: reports the readiness problems a pull request introduces, using the same engine as the CLI and the VS Code extension.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "bundle": "node scripts/bundle.mjs"
+  },
+  "devDependencies": {
+    "@setupguard/adapter-node": "workspace:*",
+    "@setupguard/core": "workspace:*",
+    "esbuild": "^0.28.2"
+  }
+}
