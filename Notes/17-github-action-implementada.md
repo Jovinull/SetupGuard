@@ -189,6 +189,27 @@ não tem script `dev`. A frase foi reescrita; o check não foi afrouxado. CLI
 (estático e completo) e a Action em modo `push` sobre o repositório dão
 `READY`/`pass`.
 
+### Demonstração dos três vereditos com a API real
+
+Reproduzível, sem credencial (API anônima), com o bundle versionado, sobre o
+merge ref real de expressjs/express #7578 (PR de fork que altera
+`lib/response.js` e `test/res.links.js`), buscado com
+`git fetch --depth=2 https://github.com/expressjs/express.git refs/pull/7578/merge`
+e um payload de evento com o número e o `head.sha` do PR:
+
+| Cenário | Exit | `result` | Requisições reais |
+|---|---|---|---|
+| A. PR sem alteração (`fail-on: warning`) | 0 | `pass` (problemas preexistentes listados, não atribuídos) | 6 |
+| B. mesmo checkout + `process.env.SETUPGUARD_DEMO_URL` lido em `lib/response.js` | **1** | `fail`, anotação `::warning` em `lib/response.js:1056`, a linha acrescentada | 6 |
+| C. `.git/HEAD` apontando para o commit da base | **1** | `incomplete`, recusado após `GET git/commits/{sha}` real | 2 |
+
+Ressalva sobre B: a linha foi acrescentada à árvore de trabalho por cima do
+merge commit real. Isso exercita o mesmo caminho de um PR que a introduzisse
+(o arquivo está na lista de alterados, então a base veio da API) e demonstra
+uma premissa documentada: a Action analisa a árvore de trabalho como a
+encontra. O erro (`fail` por blocker) no fluxo completo está coberto pelos
+testes de aceitação; no GitHub Actions ainda não foi observado.
+
 ### O que está provado e o que não está
 
 Provado no GitHub Actions (PR #1, execuções `8d14be5` e `5d2250c`):
@@ -253,6 +274,7 @@ introduz um problema falha (exit 1), e uma análise incompleta não passa.
 | `2cf8751` (PR #1) | matriz 6/6 e VSIX verdes; **`repository readiness` verde** (primeira execução real da Action, sobre o próprio PR); job do bundle falhou; audit falhou |
 | `8d14be5` (PR #1) | 9 de 10 verdes: matriz 6/6, VSIX, **bundle** e `repository readiness`; só o audit falhou (preexistente, ver abaixo) |
 | `5d2250c` (PR #1) | idem: 9 de 10; só o audit |
+| `42d62e2` (PR #1) | 9 de 10; o audit agora falha **só** pelo `minimatch` GHSA-g3hv-75wg-m249 (1 moderate, eram 18); Action: 129 arquivos, 69 requisições, `pass` |
 
 Evidência da execução real em `8d14be5`, com `GITHUB_TOKEN` (permissões
 `Contents: read`, `PullRequests: read`, `Metadata: read`): 118 arquivos
