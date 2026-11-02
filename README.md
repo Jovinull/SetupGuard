@@ -7,8 +7,8 @@ readiness**: it checks whether someone who clones this repository right now
 could actually prepare and run it, following only what the repository itself
 declares.
 
-Repositories drift. A script is renamed and the README still says
-`npm run dev`; `.nvmrc` says 18 while `engines` demands 22; a pull request
+Repositories drift. A script is renamed and the README still tells people to
+run the old one; `.nvmrc` says 18 while `engines` demands 22; a pull request
 starts reading `PAYMENTS_API_URL` and nobody adds it to `.env.example`. Each one
 costs the next contributor an afternoon. SetupGuard finds them by reading the
 repository's own files — no AI, no heuristics that change between runs, and it

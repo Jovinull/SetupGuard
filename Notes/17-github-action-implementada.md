@@ -168,6 +168,14 @@ Achados da validação real:
    com o motivo do motor, e o summary aponta `ignore:` como remédio (teste
    cobre o caso e prova que o remédio funciona).
 
+### Primeiro consumidor: o próprio repositório
+
+Num clone limpo, o auto-diagnóstico do CI acusou `BLOCKED`: a nova introdução
+do README citava `` `npm run dev` `` como exemplo de drift, e este repositório
+não tem script `dev`. A frase foi reescrita; o check não foi afrouxado. CLI
+(estático e completo) e a Action em modo `push` sobre o repositório dão
+`READY`/`pass`.
+
 ### O que ainda não foi provado
 
 - execução no GitHub Actions de verdade (runner aceitando `node24`, anotações
