@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 import * as esbuild from 'esbuild';
 
+import { writeThirdPartyNotices } from '../../../scripts/third-party-notices.mjs';
+
 /**
  * Build `dist/index.cjs`, the file `action.yml` runs.
  *
@@ -59,3 +61,11 @@ const result = await esbuild.build({
 
 const bytes = Object.values(result.metafile.outputs).reduce((total, output) => total + output.bytes, 0);
 process.stdout.write(`bundled ${path.relative(repoRoot, outfile)} (${(bytes / 1024).toFixed(1)} kB)\n`);
+
+const notices = writeThirdPartyNotices({
+  metafile: result.metafile,
+  workingDir: repoRoot,
+  outfile: path.join(outdir, 'THIRD_PARTY_NOTICES.txt'),
+  product: 'The SetupGuard GitHub Action (dist/index.cjs)',
+});
+process.stdout.write(`third-party notices: ${notices.join(', ')}\n`);

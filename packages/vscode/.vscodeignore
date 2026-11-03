@@ -4,6 +4,7 @@
 **
 
 !out/extension.cjs
+!out/THIRD_PARTY_NOTICES.txt
 !package.json
 !README.md
 !LICENSE
