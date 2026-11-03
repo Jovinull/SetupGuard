@@ -348,6 +348,15 @@ Provado localmente com a API real: uma análise incompleta não passa (exit 1).
 
 ## Histórico de execuções no GitHub
 
+> **SHAs desta seção.** Em 2026-11-03 o histórico desde `c7807e7` foi
+> reescrito só para editar mensagens de commit; as árvores são idênticas. Os
+> SHAs abaixo são os dos commits onde o CI de fato rodou, e continuam visíveis
+> no PR #1. Correspondência para os commits atuais: `2cf8751`→`b8bf3f8`,
+> `8d14be5`→`c459dd5`, `94af336`→`4bd3c73`, `5d2250c`→`f851a67`,
+> `42d62e2`→`4f19589`, `13c4b67`→`393017b`, `110158b`→`032c14b`,
+> `5e8be85`→`b4ad086`, `13d80d9`→`5b73c3f`, `202230e`→`32c0387`; o commit da
+> release `v0.1.0` passou de `58250c8` a `36a1e3a`.
+
 | Commit | Resultado |
 |---|---|
 | `2cf8751` (PR #1) | matriz 6/6 e VSIX verdes; **`repository readiness` verde** (primeira execução real da Action, sobre o próprio PR); job do bundle falhou; audit falhou |
