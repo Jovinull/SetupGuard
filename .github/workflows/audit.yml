@@ -1,0 +1,56 @@
+name: Scheduled audit
+
+# The dependency audit, on a timer.
+#
+# ci.yml audits on every push and pull request, but an accepted exception in
+# pnpm-workspace.yaml (`audit.ignore`) only expires when something runs. On a
+# quiet repository that could be weeks after its review date. This job runs
+# weekly so an overdue exception, or a new advisory against the lockfile on
+# the default branch, turns red without anyone having to push.
+#
+# It never renews anything: scripts/check-audit-exceptions.mjs only reads the
+# review dates, and changing one is a reviewed commit.
+#
+# GitHub runs `schedule` and offers `workflow_dispatch` only for workflows on
+# the default branch, so both start working once this file is on main. The
+# `pull_request` trigger, limited to the audit policy files, is how a change to
+# this policy gets exercised before it lands.
+
+on:
+  schedule:
+    # Mondays, 06:17 UTC. Off the hour, as GitHub recommends for scheduled load.
+    - cron: '17 6 * * 1'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/audit.yml
+      - scripts/check-audit-exceptions.mjs
+      - pnpm-workspace.yaml
+      - pnpm-lock.yaml
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: scheduled dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version: '24'
+          cache: pnpm
+
+      # The exception check needs `yaml`, and the audit only reads the
+      # lockfile: no dependency lifecycle script has to run for either.
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: audit exceptions are justified and not overdue
+        run: node scripts/check-audit-exceptions.mjs
+
+      - run: pnpm audit
