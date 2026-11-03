@@ -1,0 +1,74 @@
+name: Pages
+
+# Publishes the project website (site/) to GitHub Pages:
+# https://jovinull.github.io/SetupGuard/
+#
+# The site is static HTML, CSS and one small script, so there is no build step:
+# the directory is uploaded as it is. Only changes to site/ (or to this file)
+# trigger a deployment; the CI, scheduled audit and SetupGuard workflows are
+# unaffected.
+#
+# Every action is pinned to a full commit SHA, as everywhere in this
+# repository; the comment records the release it came from.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - site/**
+      - .github/workflows/pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deployment at a time; a newer push waits rather than cancelling a
+# deployment that is already publishing.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: package the site
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+
+      # Every path in the site must be relative, because a project site lives
+      # under /SetupGuard/. 404.html is the one exception: GitHub serves it for
+      # missing pages at any depth, so it links to the project base explicitly.
+      - name: site uses relative paths only
+        run: |
+          if grep -nE '(href|src)="/' site/index.html; then
+            echo "::error file=site/index.html::root-absolute path in the site; use a relative one"
+            exit 1
+          fi
+          test -f site/index.html && test -f site/404.html
+
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site
+
+  deploy:
+    name: deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
