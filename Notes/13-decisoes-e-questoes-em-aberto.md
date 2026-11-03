@@ -119,7 +119,7 @@ Decidido em 2026-09-15; detalhes e justificativas em
 ## Em aberto — produto e escopo
 
 - nome definitivo, domínio, marca e slogans finais;
-- definição de pronto da v0.1 completa (fundação, VS Code e Action existem; nenhuma release publicada);
+- critérios de pronto para versões além da 0.1 (a 0.1.0 é distribuída por GitHub Releases, ver `RELEASING.md`);
 - matriz exata de arquivos, ferramentas e frameworks do MVP;
 - quais Quick Fixes, se houver, entram depois;
 - métricas de sucesso;
@@ -185,8 +185,8 @@ Detalhes e evidência em [17-github-action-implementada.md](17-github-action-imp
 
 ## Em aberto — GitHub Action
 
-- execução real no GitHub Actions (depende de push autorizado);
-- política de tags: `v0.x.y` imutável + tag de major móvel; nenhuma criada;
+- uma tag de major móvel (`v0`) — hoje não planejada: tags `vX.Y.Z` anotadas e
+  imutáveis, e a recomendação é fixar o SHA (`RELEASING.md`);
 - publicação no Marketplace, que exige `action.yml` na raiz de um repositório
   **sem workflows** — provavelmente um repositório separado só de distribuição;
 - seguir `cd` entre blocos de documentação (falso positivo no Express);
@@ -194,13 +194,20 @@ Detalhes e evidência em [17-github-action-implementada.md](17-github-action-imp
   grandes `incomplete` sem `ignore:`;
 - várias raízes num mesmo job (monorepo com vários `path`).
 
+## Decidido — suporte e segurança (2026-11-03)
+
+- e-mail público de suporte: `felipejovinogamerplay@gmail.com`, definido pelo
+  mantenedor;
+- vulnerabilidades: private vulnerability reporting do GitHub, habilitado pelo
+  mantenedor e verificado por API
+  (`GET /repos/Jovinull/SetupGuard/private-vulnerability-reporting` →
+  `enabled: true`); política em `SECURITY.md`.
+
 ## Em aberto — segurança, privacidade e governança
 
 - redaction de stdout/stderr, quando existirem níveis que executam comandos;
 - threat model escrito;
 - sandbox/isolamento para comandos e plugins;
-- canal **privado** de reporte de vulnerabilidade (SECURITY.md existe, o canal não);
-- e-mail de suporte (exigência do GitHub Developer Program; não existe);
 - assinatura/proveniência de releases.
 
 Resolvidos na v0.1: licença (MIT), telemetria (não existe) e proteção de segredos (resolvida por construção — ver [09-seguranca-e-confiabilidade.md](09-seguranca-e-confiabilidade.md)).

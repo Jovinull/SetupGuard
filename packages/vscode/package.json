@@ -6,6 +6,11 @@
   "publisher": "jovinull",
   "description": "Tells you whether this repository is actually ready to develop in — and what is missing when it is not. Reads files, runs nothing.",
   "license": "MIT",
+  "homepage": "https://github.com/Jovinull/SetupGuard#readme",
+  "bugs": {
+    "url": "https://github.com/Jovinull/SetupGuard/issues",
+    "email": "felipejovinogamerplay@gmail.com"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/Jovinull/SetupGuard.git",
