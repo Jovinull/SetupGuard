@@ -119,6 +119,7 @@ jobs:
           extension.vsixmanifest
           extension/LICENSE.txt
           extension/changelog.md
+          extension/out/THIRD_PARTY_NOTICES.txt
           extension/out/extension.cjs
           extension/package.json
           extension/readme.md
