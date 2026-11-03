@@ -119,7 +119,7 @@ Decidido em 2026-09-15; detalhes e justificativas em
 ## Em aberto — produto e escopo
 
 - nome definitivo, domínio, marca e slogans finais;
-- definição de pronto da v0.1 completa (a fundação existe; VS Code e Action não);
+- critérios de pronto para versões além da 0.1 (a 0.1.0 é distribuída por GitHub Releases, ver `RELEASING.md`);
 - matriz exata de arquivos, ferramentas e frameworks do MVP;
 - quais Quick Fixes, se houver, entram depois;
 - métricas de sucesso;
@@ -167,24 +167,47 @@ Decidido em 2026-09-15; detalhes e justificativas em
 - pipeline de publicação e atualização em Marketplace e Open VSX;
 - ícone da extensão e identidade visual.
 
+## Decidido — GitHub Action (2026-11-02)
+
+Detalhes e evidência em [17-github-action-implementada.md](17-github-action-implementada.md).
+
+- JavaScript Action `node24`, `action.yml` na raiz, bundle versionado e
+  verificado byte a byte no CI;
+- só nível `static`; `pull_request` comparado com a base; outros eventos
+  diagnosticam o checkout inteiro; `pull_request_target` recusado;
+- permissões `contents: read` e `pull-requests: read`; sem comentário, sem
+  `checks: write`, sem PAT;
+- regressão = achado ausente na base (identidade sem linha e sem severidade);
+- erros novos falham; avisos novos só com `fail-on: warning`; `incomplete`
+  sempre falha (exit 1), distinguido pelo output `result`;
+- inputs `token`, `path`, `fail-on`; outputs `result`, `readiness`,
+  `new-errors`, `new-warnings`.
+
 ## Em aberto — GitHub Action
 
-- repositório/nome oficial e tecnologia da Action;
-- inputs, outputs, logs, annotations e summary;
-- permissões mínimas;
-- checks executados por padrão;
-- warning versus falha do job;
-- PRs de forks e segurança;
-- suporte a monorepos;
-- política de versões/tags.
+- uma tag de major móvel (`v0`) — hoje não planejada: tags `vX.Y.Z` anotadas e
+  imutáveis, e a recomendação é fixar o SHA (`RELEASING.md`);
+- publicação no Marketplace, que exige `action.yml` na raiz de um repositório
+  **sem workflows** — provavelmente um repositório separado só de distribuição;
+- seguir `cd` entre blocos de documentação (falso positivo no Express);
+- limites do motor (50 arquivos em `docs/`, profundidade 8) tornam repositórios
+  grandes `incomplete` sem `ignore:`;
+- várias raízes num mesmo job (monorepo com vários `path`).
+
+## Decidido — suporte e segurança (2026-11-03)
+
+- e-mail público de suporte: `felipejovinogamerplay@gmail.com`, definido pelo
+  mantenedor;
+- vulnerabilidades: private vulnerability reporting do GitHub, habilitado pelo
+  mantenedor e verificado por API
+  (`GET /repos/Jovinull/SetupGuard/private-vulnerability-reporting` →
+  `enabled: true`); política em `SECURITY.md`.
 
 ## Em aberto — segurança, privacidade e governança
 
 - redaction de stdout/stderr, quando existirem níveis que executam comandos;
 - threat model escrito;
 - sandbox/isolamento para comandos e plugins;
-- processo de reporte de vulnerabilidade;
-- modelo de contribuição e manutenção;
 - assinatura/proveniência de releases.
 
 Resolvidos na v0.1: licença (MIT), telemetria (não existe) e proteção de segredos (resolvida por construção — ver [09-seguranca-e-confiabilidade.md](09-seguranca-e-confiabilidade.md)).

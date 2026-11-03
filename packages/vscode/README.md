@@ -86,6 +86,14 @@ shows all of them; the status bar shows the worst.
 
 VS Code 1.90 or newer, on a local filesystem.
 
+## Support
+
+- Bugs and false positives: <https://github.com/Jovinull/SetupGuard/issues>
+- Questions: <felipejovinogamerplay@gmail.com>
+- Security problems: report them privately at
+  <https://github.com/Jovinull/SetupGuard/security/advisories/new>, never in a
+  public issue.
+
 ## Licence
 
 MIT.

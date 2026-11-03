@@ -1,0 +1,11 @@
+{
+  "//": "Editor support only. This package is not part of `tsc -b`: it ships as one esbuild bundle in dist/, and a tsc emit into the same directory would collide with it. It is type-checked by the root tsconfig.check.json like every test file.",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts"]
+}

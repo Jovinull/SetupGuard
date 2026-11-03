@@ -1,0 +1,45 @@
+name: SetupGuard
+description: Flags the repository readiness problems a pull request introduces — docs that call missing scripts, conflicting Node versions, lockfile drift, undocumented env vars.
+author: Jovinull
+
+# The code that runs is packages/github-action/dist/index.cjs, a committed
+# bundle of packages/github-action/src. CI rebuilds it and fails if the bytes
+# differ, so what runs is what was reviewed. See
+# Notes/17-github-action-implementada.md.
+
+inputs:
+  token:
+    description: >
+      Token used to read the pull request and the base commit through the
+      GitHub REST API. The workflow's GITHUB_TOKEN is enough; it needs
+      `contents: read` and `pull-requests: read`. No other permission is used.
+    required: false
+    default: ${{ github.token }}
+  path:
+    description: Directory to analyse, relative to the workspace. Use it for a project that is not at the repository root.
+    required: false
+    default: '.'
+  fail-on:
+    description: >
+      Which new findings fail the job: `error` (default) or `warning`. An
+      incomplete analysis always fails, whatever this says.
+    required: false
+    default: 'error'
+
+outputs:
+  result:
+    description: '`pass`, `fail` or `incomplete`.'
+  readiness:
+    description: The engine's readiness for the checked-out tree, static checks only (`READY`, `WARNINGS`, `BLOCKED`, `INCOMPLETE`).
+  new-errors:
+    description: Blocking findings introduced by the pull request (all blocking findings outside pull requests).
+  new-warnings:
+    description: Warnings introduced by the pull request (all warnings outside pull requests).
+
+runs:
+  using: node24
+  main: packages/github-action/dist/index.cjs
+
+branding:
+  icon: check-circle
+  color: green

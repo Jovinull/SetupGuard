@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 import * as esbuild from 'esbuild';
 
+import { writeThirdPartyNotices } from '../../../scripts/third-party-notices.mjs';
+
 /**
  * Build the extension entry point that VS Code loads.
  *
@@ -43,3 +45,12 @@ const result = await esbuild.build({
 
 const bytes = Object.values(result.metafile.outputs).reduce((total, output) => total + output.bytes, 0);
 process.stdout.write(`bundled ${outfile} (${(bytes / 1024).toFixed(1)} kB)\n`);
+
+// The VSIX ships out/ as-is, so the notices go next to the bundle they cover.
+const notices = writeThirdPartyNotices({
+  metafile: result.metafile,
+  workingDir: process.cwd(),
+  outfile: path.join(root, 'out', 'THIRD_PARTY_NOTICES.txt'),
+  product: 'The SetupGuard VS Code extension (out/extension.cjs)',
+});
+process.stdout.write(`third-party notices: ${notices.join(', ')}\n`);

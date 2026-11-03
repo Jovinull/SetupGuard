@@ -22,3 +22,16 @@ allowBuilds:
 # used instead.
 minimumReleaseAgeExclude:
   - '@vscode/vsce@4.0.0'
+
+# Advisories `pnpm audit` skips. Each one is a risk that was assessed and
+# accepted, NOT a fix: the vulnerable package is still installed. Every entry
+# must also be in scripts/check-audit-exceptions.mjs with a review date; CI
+# fails once that date passes, so no exception can stay here unnoticed.
+audit:
+  ignore:
+    # minimatch: DoS through globparts amplification, fixed only in 11.0.1.
+    # Development tooling only (ESLint, typescript-eslint, @vscode/vsce); not in
+    # the action bundle or the VSIX. The vulnerable code runs only with
+    # `optimizationLevel >= 2`, which no installed consumer sets. Full analysis:
+    # Notes/17-github-action-implementada.md. Review by 2026-11-30.
+    - GHSA-g3hv-75wg-m249

@@ -166,6 +166,7 @@ export async function scanEnvUsage(
       while ((match = pattern.exec(masked)) !== null) {
         const captured = match[1];
         if (!captured) continue;
+        if (!destructuring && isWrite(masked, match.index, match.index + match[0].length)) continue;
         const line = offsetToPosition(masked, match.index).line;
         for (const name of destructuring ? destructuredNames(captured) : [captured]) {
           const dedupeKey = `${name}::${file}::${line}`;
@@ -178,6 +179,21 @@ export async function scanEnvUsage(
   }
 
   return { usages, gaps };
+}
+
+/**
+ * True when the access at `[start, end)` sets or removes the variable instead
+ * of depending on it: `process.env.X = v`, `??=`, `||=`, or `delete process.env.X`.
+ *
+ * A test setup file that does `process.env.NO_DEPRECATION = '...'` provides the
+ * variable itself; asking for it in `.env.example` was a false positive found
+ * on a real repository. `??=` and `||=` read the variable, but only to supply
+ * a default when it is missing, which makes it optional by construction.
+ * Comparisons (`==`, `===`) are reads and still count.
+ */
+function isWrite(text: string, start: number, end: number): boolean {
+  if (/^\s*(?:=(?!=)|\?\?=|\|\|=)/.test(text.slice(end, end + 16))) return true;
+  return /\bdelete\s+$/.test(text.slice(Math.max(0, start - 16), start));
 }
 
 /** Group usages by variable name, preserving discovery order. */

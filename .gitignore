@@ -5,10 +5,16 @@ node_modules/
 dist/
 *.tsbuildinfo
 
+# ...except the GitHub Action bundle: action.yml runs it straight from the
+# repository, with no install step. CI rebuilds it and diffs it against this
+# committed copy.
+!packages/github-action/dist/
+
 # extension bundle and package: both are produced by `pnpm --filter setupguard
 # run package` and neither belongs in the history
 packages/vscode/out/
 *.vsix
+packages/vscode/SHA256SUMS.txt
 
 # test / tooling caches
 coverage/

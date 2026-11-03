@@ -7,13 +7,137 @@ readiness**: it checks whether someone who clones this repository right now
 could actually prepare and run it, following only what the repository itself
 declares.
 
-This repository is at **v0.1**. The engine, the Node.js adapter, the CLI and the
-VS Code extension exist and are tested; the GitHub Action does not. The
-extension has **not** been published to any marketplace. The product
-specification lives in [`Notes/`](Notes/README.md) and is the source of truth
-for scope and decisions.
+Repositories drift. A script is renamed and the README still tells people to
+run the old one; `.nvmrc` says 18 while `engines` demands 22; a pull request
+starts reading `PAYMENTS_API_URL` and nobody adds it to `.env.example`. Each one
+costs the next contributor an afternoon. SetupGuard finds them by reading the
+repository's own files — no AI, no heuristics that change between runs, and it
+never executes anything from the project.
+
+This repository is at **v0.1**. Three interfaces share one engine and one set of
+checks:
+
+| Interface | State |
+| --- | --- |
+| CLI (`packages/cli`) | implemented and tested; run from a clone, **not** published to npm |
+| VS Code extension (`packages/vscode`) | implemented and tested; the `.vsix` is attached to [GitHub Releases](https://github.com/Jovinull/SetupGuard/releases); **not** on the VS Code Marketplace or Open VSX |
+| GitHub Action (`action.yml`, `packages/github-action`) | implemented; tested against a controlled API, against real public pull requests, and on GitHub Actions in this repository (a failing and a passing pull request); referenced by commit SHA; **not** listed on the GitHub Marketplace |
+
+This is an early, 0.x release: useful and tested, but its checks, outputs and
+configuration may still change between minor versions.
+
+The product specification lives in [`Notes/`](Notes/README.md) and is the
+source of truth for scope and decisions.
+
+## On pull requests: the GitHub Action
+
+The action tells a maintainer which readiness problems **a pull request
+introduces** — not every problem the repository already had.
+
+```yaml
+# .github/workflows/setupguard.yml
+name: SetupGuard
+on:
+  pull_request:
+permissions:
+  contents: read
+  pull-requests: read
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5; keep the default ref
+        with:
+          persist-credentials: false
+      - uses: Jovinull/SetupGuard@<commit-sha>   # see "Versions" below
+```
+
+Pin a full commit SHA. Each [GitHub Release](https://github.com/Jovinull/SetupGuard/releases)
+names the commit it was built from — use that one. There is no `@v1` and no
+moving major tag.
+
+### What it does
+
+1. Diagnoses the checked-out pull request with the same engine as the CLI,
+   static level only.
+2. Uses the **GitHub REST API** to learn exactly what the pull request changed
+   and what the base looked like:
+   `GET /repos/{o}/{r}/pulls/{n}` (identity and head SHA, read twice to detect a
+   pull request that moved during the run), `GET /repos/{o}/{r}/git/commits/{sha}`
+   (the merge commit's parents, i.e. the real base),
+   `GET /repos/{o}/{r}/pulls/{n}/files` (paginated list of changed files), and
+   `GET /repos/{o}/{r}/contents/{path}?ref={base}` for the base version of a
+   changed file — **only** for files a check actually reads.
+3. Diagnoses the base the same way and compares. A finding is **new** only if
+   the base does not have it, or had it at a lower severity — a warning the
+   pull request turns into an error is reported as raised by the pull request.
+   Moving a README paragraph does not make an old problem new.
+4. Reports through the runner: error/warning annotations on the diff for new
+   problems, a job summary with every finding (new, already on the base, not
+   comparable), and the list of API requests in the log.
+
+| Result | Exit | When |
+| --- | --- | --- |
+| `fail` | 1 | the pull request introduces an error (or a warning, with `fail-on: warning`) |
+| `incomplete` | 1 | anything that prevented a full answer: API failure, a check that could not conclude, a base that could not be reproduced, an unsupported project. **Never reported as a pass** |
+| `pass` | 0 | nothing at the threshold was introduced; problems already on the base are listed, not failed |
+
+Outside pull requests (`push`, `workflow_dispatch`, ...) it diagnoses the whole
+checkout, like the CLI.
+
+Inputs: `token` (default: the workflow's `GITHUB_TOKEN`), `path` (subdirectory
+to analyse, default `.`), `fail-on` (`error` or `warning`). Outputs: `result`,
+`readiness`, `new-errors`, `new-warnings`.
+
+### Security and permissions
+
+- **`pull_request` only.** On a fork the token is read-only and no secret is
+  exposed. `pull_request_target` is refused: it checks out the base branch,
+  not the pull request, and carries a privileged token.
+- **Two read permissions**, `contents: read` and `pull-requests: read`. No
+  `checks: write`, no comments on the pull request, no personal access token.
+- **Nothing from the pull request runs.** No `npm install`, no scripts, no
+  config file is evaluated, and not even `git`: the checked-out commit is read
+  from `.git/HEAD` as a file.
+- **Pull request content is data.** Annotations are escaped like
+  `@actions/core` escapes them, the log is printed inside a per-run
+  `stop-commands` region, the summary entity-encodes every character HTML or
+  Markdown would act on, and outputs are restricted to fixed values. File paths
+  from the API with `..`, `.git`, control characters or backslashes stop the
+  comparison rather than being used.
+- **The code that runs is the code in this repository.** `action.yml` runs
+  `packages/github-action/dist/index.cjs`, a committed bundle. CI rebuilds it
+  and fails if one byte differs; to check it yourself:
+  `pnpm install --frozen-lockfile && pnpm --filter @setupguard/github-action run bundle && git diff --exit-code packages/github-action/dist`.
+
+### Limitations
+
+- Static checks only: the runner is not the contributor's machine, so Node
+  version, `PATH` and local `.env` checks do not run in CI.
+- The comparison needs the default `actions/checkout` ref (the merge commit) or
+  the pull request head; any other checkout is reported `incomplete`.
+- Pull requests with more than 3000 changed files are `incomplete`: that is the
+  most the files endpoint lists. A run is capped at 400 API requests.
+- Large repositories can exceed the engine's scan limits (50 files under
+  `docs/`, source depth 8) and get `incomplete`. The job says which check and
+  why; `ignore:` in `.setupguard.yml` narrows the scan.
+- A changed file that is a symlink on the base cannot be reproduced through the
+  API and makes the run `incomplete` when a check reads it.
+
+Design record and evidence: [Notes/17](Notes/17-github-action-implementada.md).
+
+### Versions
+
+Releases are tagged `vX.Y.Z` (the first is `v0.1.0`) and published as
+[GitHub Releases](https://github.com/Jovinull/SetupGuard/releases); what each
+contains is in [CHANGELOG.md](CHANGELOG.md), and the procedure in
+[RELEASING.md](RELEASING.md). Pin the commit SHA a release names rather than
+the tag: a SHA cannot be moved, a tag can.
 
 ## Try it
+
+The CLI is not published to npm yet; run it from a clone (Node.js >= 22.13,
+pnpm 11 through Corepack):
 
 ```bash
 pnpm install
@@ -24,7 +148,19 @@ node packages/cli/dist/bin.js fixtures/broken-node-project
 
 ### In VS Code
 
+The extension is not on any marketplace. Download `setupguard-<version>.vsix`
+from a [GitHub Release](https://github.com/Jovinull/SetupGuard/releases), check
+it against the release's `SHA256SUMS.txt`, and install it:
+
 ```bash
+code --install-extension setupguard-0.1.0.vsix
+```
+
+Or build it from a clone (`pnpm run build` first: the extension bundles the
+compiled packages):
+
+```bash
+pnpm run build
 pnpm --filter setupguard run package
 code --install-extension packages/vscode/setupguard-0.1.0.vsix
 ```
@@ -108,7 +244,9 @@ schema: [`schemas/setupguard.schema.json`](schemas/setupguard.schema.json).
   it is written or rendered (identifiers such as check ids and the workspace
   root you passed in are structural and are left as-is);
 - modify your files;
-- send anything anywhere. Everything runs locally.
+- send anything anywhere. The CLI and the extension make no network request.
+  The GitHub Action makes read-only `GET` requests to the GitHub API of the
+  repository it runs in, and nothing else; every request is listed in its log.
 
 ## Layout
 
@@ -118,6 +256,8 @@ packages/
   adapter-node/  Node.js/TypeScript ecosystem: facts and checks
   cli/           `setupguard` command
   vscode/        the VS Code extension (`setupguard`)
+  github-action/ the GitHub Action; dist/index.cjs is the committed bundle action.yml runs
+action.yml       metadata of the GitHub Action
 schemas/         generated JSON Schema for .setupguard.yml
 fixtures/        real project directories used by the tests
 testing/         shared test helpers
@@ -145,10 +285,23 @@ for what is still open.
 
 `.github/workflows/ci.yml` runs lint, typecheck, tests and a self-diagnosis on
 Ubuntu, macOS and Windows, against the lowest Node this project supports
-(22.13.0) and the current LTS (24), plus a separate dependency audit.
+(22.13.0) and the current LTS (24), plus a dependency audit, the VSIX package
+check and the GitHub Action bundle check. `.github/workflows/setupguard.yml`
+runs the action on this repository's own pull requests, and
+`.github/workflows/audit.yml` repeats the dependency audit weekly on the
+default branch, so an overdue audit exception turns red even when nobody
+pushes.
 
-**All seven jobs pass** — 386 tests on three operating systems and two Node
-versions.
+Production dependencies have no known advisory (`pnpm audit --prod`). The full
+audit carries **one accepted exception**, not a fix: `minimatch`
+GHSA-g3hv-75wg-m249 (moderate), in development tooling only (ESLint,
+typescript-eslint, `@vscode/vsce`). No released version of those tools uses the
+fixed `minimatch` yet; the vulnerable code needs `optimizationLevel >= 2`,
+which none of them sets, and `minimatch` is not in the action bundle or the
+VSIX. The exception is scoped to that one advisory in `pnpm-workspace.yaml`,
+and `scripts/check-audit-exceptions.mjs` fails CI — and the weekly audit — once
+its review date (2026-11-30) passes. Analysis and run history:
+[Notes/17](Notes/17-github-action-implementada.md).
 
 One thing a green matrix still does not prove:
 
@@ -165,6 +318,28 @@ hide a true finding.
 Node 20 is deliberately not supported: it reached end of life on 2026-04-30,
 and shipping support for a runtime without security patches would contradict
 what this tool is for.
+
+## Reporting bugs and getting help
+
+- **Bugs and false positives:** open an issue at
+  <https://github.com/Jovinull/SetupGuard/issues>. Include the finding's code
+  (e.g. `node/docs-script-not-found`), the file and line it points at, and
+  what you expected. For the action, the job summary and the list of API
+  requests from the log are the most useful attachments.
+- **Questions and support:** <felipejovinogamerplay@gmail.com>. Prefer an issue
+  for anything that others could hit too.
+- **Security problems:** never in a public issue; report them privately through
+  [GitHub's private vulnerability reporting](https://github.com/Jovinull/SetupGuard/security/advisories/new).
+  See [SECURITY.md](SECURITY.md).
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). In short: `pnpm check` must pass, a
+bug fix comes with a test that fails without it, and the engine stays
+deterministic — no network, no AI, nothing executed from the analysed project.
+
+SetupGuard is an independent project. It is not affiliated with or endorsed by
+GitHub.
 
 ## Licence
 

@@ -1,0 +1,13 @@
+{
+  "name": "pr-demo",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "node src/index.js",
+    "start": "node src/index.js",
+    "test": "node --test"
+  }
+}
