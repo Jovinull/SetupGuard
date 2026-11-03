@@ -3,10 +3,12 @@
 All notable changes to SetupGuard. Versions follow [Semantic Versioning](https://semver.org/);
 while the major version is 0, a minor release may change behaviour.
 
-## 0.1.0 — release candidate, not yet released
+## 0.1.0 — 2026-11-03
 
-No tag and no published package exist yet. This section describes what the
-first release will contain; [RELEASING.md](RELEASING.md) is the procedure.
+First public release: a GitHub Release tagged `v0.1.0`, with the VS Code
+extension attached as a `.vsix`. Nothing is published to npm, the VS Code
+Marketplace, Open VSX or the GitHub Marketplace. As a 0.x release, checks,
+outputs and configuration may still change.
 
 ### Engine (`@setupguard/core`, `@setupguard/adapter-node`)
 

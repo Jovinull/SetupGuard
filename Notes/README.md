@@ -50,7 +50,7 @@ A partir de 2026-09-14 existe uma **fundação implementada** — monorepo TypeS
 
 Desde 2026-09-15 existe também uma **extensão VS Code instalável**, descrita em [Extensão VS Code — implementação](16-extensao-vscode-implementada.md). Ela não foi publicada em nenhum marketplace.
 
-Desde 2026-11-02 existe uma **GitHub Action** que compara o pull request com a base pela API REST do GitHub, descrita em [GitHub Action — implementação](17-github-action-implementada.md). Sem tag de release e fora do Marketplace.
+Desde 2026-11-02 existe uma **GitHub Action** que compara o pull request com a base pela API REST do GitHub, descrita em [GitHub Action — implementação](17-github-action-implementada.md). Distribuída por GitHub Releases a partir de `v0.1.0` ([RELEASING.md](../RELEASING.md)); fora do Marketplace.
 
 Tudo que continua indefinido segue marcado nesta documentação como **Em aberto**. Exemplos e nomes de APIs extraídos da ideia devem ser tratados como propostas, não como contratos já estabilizados.
 

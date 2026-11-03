@@ -6,9 +6,10 @@ vale este.
 
 Estado em 2026-11-02: implementada; testada localmente; validada contra a API
 real do GitHub em pull requests públicos; e **executada no GitHub Actions** no
-próprio PR #1 deste repositório (caso positivo, `GITHUB_TOKEN` real). **Sem tag
-de release** e fora do GitHub Marketplace. O que ainda não foi provado está
-listado ao fim.
+próprio PR #1 deste repositório (caso positivo, `GITHUB_TOKEN` real) e num PR
+temporário (caso negativo). Distribuída por GitHub Releases a partir de
+`v0.1.0` (procedimento em `RELEASING.md`), referenciada por SHA; fora do GitHub
+Marketplace. O que ainda não foi provado está listado ao fim.
 
 ## Decisões
 
@@ -343,8 +344,7 @@ Provado localmente com a API real: uma análise incompleta não passa (exit 1).
 - várias raízes por job; suporte melhor a repositórios grandes sem `ignore:`;
 - bundle da extensão a partir do `src/` (como o da Action), eliminando a
   dependência de um build prévio;
-- PR de fork real; repositório de distribuição para o Marketplace;
-- canal privado de segurança e e-mail de suporte (dependem do mantenedor).
+- PR de fork real; repositório de distribuição para o Marketplace.
 
 ## Histórico de execuções no GitHub
 

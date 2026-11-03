@@ -79,8 +79,9 @@ Qualquer ação destrutiva exige confirmação. Além disso, a extensão não de
 
 ## Distribuição
 
-A intenção continua sendo publicar em VS Code Marketplace e Open VSX. **Nada foi
-publicado até agora.**
+A intenção continua sendo publicar em VS Code Marketplace e Open VSX; **nenhum
+marketplace recebeu a extensão**. O `.vsix` é distribuído como anexo das GitHub
+Releases, a partir de `v0.1.0`, para instalação manual.
 
 Decidido: identificador `jovinull.setupguard`, requisito mínimo VS Code 1.90,
 `extensionKind: ["workspace"]`. Política de atualização e processo de publicação

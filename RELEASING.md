@@ -1,8 +1,6 @@
 # Releasing SetupGuard
 
-The procedure for a release. Nothing here runs automatically, and none of it
-has been done for 0.1.0 yet: there is no tag, no GitHub release and no
-marketplace listing.
+The procedure for a release. Nothing here runs automatically.
 
 Every step is done by a maintainer, from a clean clone, on a commit of `main`
 whose CI is green.
@@ -12,21 +10,24 @@ whose CI is green.
 - All packages share one version (`0.1.0` today). Bump every `package.json`
   together, and `--out setupguard-<version>.vsix` in `packages/vscode/package.json`.
 - Tags are `v<major>.<minor>.<patch>`, annotated, and never moved or reused.
-- Until a tag exists, the action is referenced by full commit SHA. After the
-  first tag, the README may also show `@v0.1.0`, but keep recommending SHAs:
-  a tag can be moved by anyone with push access, a SHA cannot. A moving major
-  tag (`v0`) is not planned while the API is 0.x.
+- The action is referenced by full commit SHA, and every release names its
+  commit. Keep recommending SHAs over tags: a tag can be moved by anyone with
+  push access, a SHA cannot. A moving major tag (`v0`) is not planned while
+  the API is 0.x.
 
 ## 1. Preconditions
 
-- [ ] The release commit is on `main`, and every check on it is green
-      (`ci.yml`, `setupguard.yml`, `audit.yml`).
+- [ ] The release commit is on `main`, and the `push` runs of `ci.yml` and
+      `setupguard.yml` on it are green.
+- [ ] `audit.yml` passes on it. It does not run on push, so dispatch it:
+      `gh workflow run audit.yml --ref main`, then `gh run watch` the new run.
 - [ ] `node scripts/check-audit-exceptions.mjs` passes, and no exception is
       within a week of its review date. If one is due, review it first
       (Notes/17); never renew a date without new evidence.
 - [ ] `CHANGELOG.md` describes the release, with the date filled in.
 - [ ] `SECURITY.md` and the README describe the support and security channels
-      that actually exist. Do not publish an address that has not been set up.
+      that actually exist. Private vulnerability reporting can be checked with
+      `gh api repos/Jovinull/SetupGuard/private-vulnerability-reporting`.
 
 ## 2. Build and verify from a clean clone
 
@@ -55,7 +56,14 @@ pnpm --filter setupguard run package
 node packages/cli/dist/bin.js .              # READY, on Node 24 as .nvmrc pins
 node packages/cli/dist/bin.js --version      # the release version
 
-sha256sum packages/vscode/setupguard-0.1.0.vsix packages/github-action/dist/index.cjs
+# The notices cover exactly what each bundle inlines.
+head -3 packages/github-action/dist/THIRD_PARTY_NOTICES.txt
+unzip -p packages/vscode/setupguard-0.1.0.vsix extension/out/THIRD_PARTY_NOTICES.txt | head -3
+
+# Checksums for the release assets (bare file names, so `sha256sum -c` works
+# in the download directory).
+(cd packages/vscode && sha256sum setupguard-0.1.0.vsix > SHA256SUMS.txt)
+sha256sum packages/github-action/dist/index.cjs   # for the release notes
 ```
 
 ## 3. Tag and publish the GitHub release
@@ -64,20 +72,24 @@ sha256sum packages/vscode/setupguard-0.1.0.vsix packages/github-action/dist/inde
 git tag -a v0.1.0 <release-commit-sha> -m "SetupGuard 0.1.0"
 git push origin v0.1.0
 
-gh release create v0.1.0 --verify-tag --title "SetupGuard 0.1.0" \
+gh release create v0.1.0 --verify-tag --title "SetupGuard v0.1.0" \
   --notes-file <release-notes.md> \
-  packages/vscode/setupguard-0.1.0.vsix
+  packages/vscode/setupguard-0.1.0.vsix packages/vscode/SHA256SUMS.txt
 ```
 
-Release notes: the `0.1.0` section of `CHANGELOG.md`, plus the SHA-256 of the
-VSIX and the commit SHA to pin the action to.
+Release notes: the `0.1.0` section of `CHANGELOG.md`, the commit SHA to pin
+the action to, requirements, known limitations, and the SHA-256 of the VSIX
+and of the action bundle.
 
 ## 4. Verify after publishing
 
-- [ ] `git ls-remote --tags origin v0.1.0` points at the release commit.
-- [ ] The downloaded VSIX has the published SHA-256, installs with
-      `code --install-extension setupguard-0.1.0.vsix`, and shows `Ready` on
-      `fixtures/healthy-npm` and `Blocked` on `fixtures/broken-node-project`.
+- [ ] `git ls-remote --tags origin 'v0.1.0^{}'` points at the release commit.
+- [ ] `gh release download v0.1.0 -D <empty-dir>` then, in that directory,
+      `sha256sum -c SHA256SUMS.txt` reports `OK`.
+- [ ] The VSIX installs into an isolated profile —
+      `code --user-data-dir <tmp> --extensions-dir <tmp> --install-extension setupguard-0.1.0.vsix`
+      — and shows `Ready` on `fixtures/healthy-npm` and `Blocked` on
+      `fixtures/broken-node-project`.
 - [ ] In a separate test repository, a workflow using
       `Jovinull/SetupGuard@<release-commit-sha>`: a pull request that
       references a missing script fails with an annotation; removing it passes.

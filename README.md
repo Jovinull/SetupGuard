@@ -19,9 +19,12 @@ checks:
 
 | Interface | State |
 | --- | --- |
-| CLI (`packages/cli`) | implemented and tested |
-| VS Code extension (`packages/vscode`) | implemented and tested; **not** published to any marketplace |
-| GitHub Action (`action.yml`, `packages/github-action`) | implemented; tested against a controlled API, against real public pull requests, and on GitHub Actions on this repository's own pull request; **no release tag yet**, not on the GitHub Marketplace |
+| CLI (`packages/cli`) | implemented and tested; run from a clone, **not** published to npm |
+| VS Code extension (`packages/vscode`) | implemented and tested; the `.vsix` is attached to [GitHub Releases](https://github.com/Jovinull/SetupGuard/releases); **not** on the VS Code Marketplace or Open VSX |
+| GitHub Action (`action.yml`, `packages/github-action`) | implemented; tested against a controlled API, against real public pull requests, and on GitHub Actions in this repository (a failing and a passing pull request); referenced by commit SHA; **not** listed on the GitHub Marketplace |
+
+This is an early, 0.x release: useful and tested, but its checks, outputs and
+configuration may still change between minor versions.
 
 The product specification lives in [`Notes/`](Notes/README.md) and is the
 source of truth for scope and decisions.
@@ -49,8 +52,9 @@ jobs:
       - uses: Jovinull/SetupGuard@<commit-sha>   # see "Versions" below
 ```
 
-No release has been tagged yet, so pin a full commit SHA from `main`. A `@v1`
-reference does not exist and will not resolve.
+Pin a full commit SHA. Each [GitHub Release](https://github.com/Jovinull/SetupGuard/releases)
+names the commit it was built from — use that one. There is no `@v1` and no
+moving major tag.
 
 ### What it does
 
@@ -124,10 +128,11 @@ Design record and evidence: [Notes/17](Notes/17-github-action-implementada.md).
 
 ### Versions
 
-There is no tag yet. Until one exists, pin a full commit SHA; a SHA cannot be
-moved, a tag can. The first release will be `v0.1.0` (see
-[CHANGELOG.md](CHANGELOG.md)); the procedure is in [RELEASING.md](RELEASING.md).
-Even after it exists, pinning a SHA remains the recommendation.
+Releases are tagged `vX.Y.Z` (the first is `v0.1.0`) and published as
+[GitHub Releases](https://github.com/Jovinull/SetupGuard/releases); what each
+contains is in [CHANGELOG.md](CHANGELOG.md), and the procedure in
+[RELEASING.md](RELEASING.md). Pin the commit SHA a release names rather than
+the tag: a SHA cannot be moved, a tag can.
 
 ## Try it
 
@@ -143,10 +148,19 @@ node packages/cli/dist/bin.js fixtures/broken-node-project
 
 ### In VS Code
 
-The extension is not on any marketplace; build the `.vsix` and install it by
-hand (the release, once published, will attach it):
+The extension is not on any marketplace. Download `setupguard-<version>.vsix`
+from a [GitHub Release](https://github.com/Jovinull/SetupGuard/releases), check
+it against the release's `SHA256SUMS.txt`, and install it:
 
 ```bash
+code --install-extension setupguard-0.1.0.vsix
+```
+
+Or build it from a clone (`pnpm run build` first: the extension bundles the
+compiled packages):
+
+```bash
+pnpm run build
 pnpm --filter setupguard run package
 code --install-extension packages/vscode/setupguard-0.1.0.vsix
 ```
@@ -312,9 +326,11 @@ what this tool is for.
   (e.g. `node/docs-script-not-found`), the file and line it points at, and
   what you expected. For the action, the job summary and the list of API
   requests from the log are the most useful attachments.
-- **Security problems:** do not open a public issue; see [SECURITY.md](SECURITY.md).
-- **Support e-mail:** not set up yet. Until there is one, the issue tracker is
-  the only support channel.
+- **Questions and support:** <felipejovinogamerplay@gmail.com>. Prefer an issue
+  for anything that others could hit too.
+- **Security problems:** never in a public issue; report them privately through
+  [GitHub's private vulnerability reporting](https://github.com/Jovinull/SetupGuard/security/advisories/new).
+  See [SECURITY.md](SECURITY.md).
 
 ## Contributing
 
