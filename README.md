@@ -248,6 +248,7 @@ Notes/           product specification and decision log
 ```bash
 pnpm install
 pnpm check      # lint + typecheck + test
+pnpm run serve  # TEMPORARY REGRESSION: no such script (negative test, do not merge)
 ```
 
 CI runs the same commands on Linux, macOS and Windows against Node 22.13 and 24,
