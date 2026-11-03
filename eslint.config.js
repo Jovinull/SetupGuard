@@ -55,4 +55,14 @@ export default tseslint.config(
       globals: { process: 'readonly', URL: 'readonly', console: 'readonly' },
     },
   },
+  {
+    // The website's browser script: plain JavaScript, no tsconfig project.
+    files: ['site/**/*.js'],
+    extends: [tseslint.configs.disableTypeChecked],
+    languageOptions: {
+      sourceType: 'script',
+      parserOptions: { project: null },
+      globals: { window: 'readonly', document: 'readonly', navigator: 'readonly' },
+    },
+  },
 );

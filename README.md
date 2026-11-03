@@ -2,6 +2,8 @@
 
 > Clone. Open. Know what's broken.
 
+Website: <https://jovinull.github.io/SetupGuard/>
+
 SetupGuard is a local, deterministic diagnostic for **repository development
 readiness**: it checks whether someone who clones this repository right now
 could actually prepare and run it, following only what the repository itself
@@ -259,6 +261,7 @@ packages/
   github-action/ the GitHub Action; dist/index.cjs is the committed bundle action.yml runs
 action.yml       metadata of the GitHub Action
 schemas/         generated JSON Schema for .setupguard.yml
+site/            the project website, published to GitHub Pages
 fixtures/        real project directories used by the tests
 testing/         shared test helpers
 Notes/           product specification and decision log

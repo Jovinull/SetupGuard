@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; script-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>SetupGuard — catch broken setup instructions before they reach your team</title>
+  <meta name="description" content="SetupGuard is a deterministic, read-only diagnostic for Node.js and TypeScript repositories. It finds documented scripts that do not exist, conflicting Node.js versions, lockfile drift and undocumented environment variables — on pull requests, in VS Code and from the command line.">
+  <link rel="canonical" href="https://jovinull.github.io/SetupGuard/">
+  <meta name="theme-color" content="#0b0d10">
+  <meta name="color-scheme" content="dark light">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="SetupGuard">
+  <meta property="og:title" content="SetupGuard — Your repository works. Does its setup?">
+  <meta property="og:description" content="Deterministic, read-only setup diagnostics for Node.js and TypeScript repositories: a GitHub Action, a VS Code extension and a CLI. Open source, MIT.">
+  <meta property="og:url" content="https://jovinull.github.io/SetupGuard/">
+  <meta property="og:image" content="https://jovinull.github.io/SetupGuard/assets/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="SetupGuard: Your repository works. Does its setup?">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="assets/app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap header-row">
+      <a class="brand" href="./" aria-label="SetupGuard home">
+        <svg class="mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M16 2.5 4.5 6.8v8.4c0 7 4.9 12.4 11.5 14.3 6.6-1.9 11.5-7.3 11.5-14.3V6.8L16 2.5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="m10.5 16.2 3.8 3.8 7.4-8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>SetupGuard</span>
+      </a>
+      <nav aria-label="Primary">
+        <ul class="nav-links">
+          <li class="nav-optional"><a href="#demo">Demo</a></li>
+          <li class="nav-optional"><a href="#how">How it works</a></li>
+          <li class="nav-optional"><a href="#interfaces">Interfaces</a></li>
+          <li class="nav-optional"><a href="#limits">Limitations</a></li>
+          <li><a href="#install">Install</a></li>
+          <li><a class="nav-cta" href="https://github.com/Jovinull/SetupGuard">GitHub</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="wrap hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow"><span class="dot" aria-hidden="true"></span>v0.1.0 · open source · MIT</p>
+          <h1 id="hero-title">Your repository works.<br><span class="dim">Does its setup?</span></h1>
+          <p class="lede">Catch broken setup instructions, configuration mismatches and onboarding regressions before they slow your team down. SetupGuard reads what a Node.js or TypeScript repository declares — its README, <code>package.json</code>, lockfiles, version files and <code>.env.example</code> — and tells you where those promises no longer hold.</p>
+          <div class="actions">
+            <a class="btn btn-primary" href="#install">Get started</a>
+            <a class="btn" href="https://github.com/Jovinull/SetupGuard/releases/tag/v0.1.0">Release v0.1.0</a>
+            <a class="btn btn-ghost" href="https://github.com/Jovinull/SetupGuard">View on GitHub</a>
+          </div>
+          <ul class="hero-facts">
+            <li>Deterministic — same files, same report</li>
+            <li>Read-only — never runs your project</li>
+            <li>No AI, no telemetry</li>
+          </ul>
+        </div>
+
+        <figure class="terminal hero-terminal">
+          <div class="term-bar" aria-hidden="true"><span></span><span></span><span></span><b>setupguard fixtures/docs-drift-project --level static</b></div>
+          <pre class="term-body" tabindex="0" aria-label="Example CLI output"><span class="t-sec">Documentation · node/docs-script-drift</span>
+  <span class="t-err">error</span>    README.md tells the reader to run "pnpm start",
+           which is not a declared script
+           <span class="t-dim">expected: a script named "start" in package.json</span>
+           <span class="t-dim">found:    package.json scripts: web, build</span>
+           <span class="t-dim">at README.md:12 — in a shell code block</span>
+
+  <span class="t-warn">warning</span>  README.md tells the reader to run "pnpm dev",
+           which is not a declared script
+           <span class="t-dim">at README.md:15 — in inline code</span>
+           <span class="t-fix">fix: Update README.md to use "web", or declare</span>
+           <span class="t-fix">     "dev" in package.json.</span>
+
+1 blocker · 1 warning · 5 checks verified
+<span class="t-blocked">BLOCKED</span></pre>
+          <figcaption>Output of the SetupGuard 0.1.0 CLI on one of the repository's test projects, shortened.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section class="band" aria-labelledby="checks-title">
+      <div class="wrap">
+        <h2 id="checks-title" class="kicker-title"><span class="kicker">What it checks</span>The contract a repository makes with whoever clones it</h2>
+        <div class="checks">
+          <article class="check">
+            <h3>Documented scripts exist</h3>
+            <p>A README or <code>docs/</code> page telling you to run <code>npm run dev</code> when <code>package.json</code> has no <code>dev</code> — and scripts that call scripts that are not declared.</p>
+          </article>
+          <article class="check">
+            <h3>Node.js versions agree</h3>
+            <p><code>engines</code>, <code>volta</code>, <code>.nvmrc</code> and <code>.node-version</code> read together; contradictions are reported, never silently resolved.</p>
+          </article>
+          <article class="check">
+            <h3>Lockfile matches the package manager</h3>
+            <p>Missing lockfiles, lockfiles from several managers, and a lockfile that contradicts <code>packageManager</code>.</p>
+          </article>
+          <article class="check">
+            <h3>Environment variables are documented</h3>
+            <p>Variables the code reads that <code>.env.example</code> does not list. Names only — a value is never printed.</p>
+          </article>
+        </div>
+        <p class="note">Plus <code>package.json</code> validity and, from the CLI and the editor, the local machine: Node.js version, package manager on <code>PATH</code>, local <code>.env</code> names. Nine checks in total in v0.1.0.</p>
+      </div>
+    </section>
+
+    <section id="demo" class="section" aria-labelledby="demo-title">
+      <div class="wrap">
+        <h2 id="demo-title" class="kicker-title"><span class="kicker">Demonstration</span>Four ways a setup breaks</h2>
+        <p class="illustrative" role="note"><strong>Illustrative.</strong> Nothing is analysed in your browser. Each scenario shows small synthetic files and the output SetupGuard 0.1.0 actually printed for them — from the CLI, or from a real GitHub Actions run — with long lines wrapped and some detail lines left out to fit.</p>
+
+        <div class="demo" data-demo>
+          <div class="tabs" role="tablist" aria-label="Scenarios">
+            <button class="tab" role="tab" id="tab-script" aria-controls="panel-script" aria-selected="true">README → missing script</button>
+            <button class="tab" role="tab" id="tab-node" aria-controls="panel-node" aria-selected="false" tabindex="-1">Conflicting Node.js versions</button>
+            <button class="tab" role="tab" id="tab-env" aria-controls="panel-env" aria-selected="false" tabindex="-1">Undocumented variable</button>
+            <button class="tab" role="tab" id="tab-pr" aria-controls="panel-pr" aria-selected="false" tabindex="-1">A pull request regression</button>
+          </div>
+
+          <div class="panel" role="tabpanel" id="panel-script" aria-labelledby="tab-script" tabindex="0">
+            <div class="panel-grid">
+              <div class="files">
+                <p class="file-name">README.md</p>
+                <pre class="code"><span class="ln">11</span> ```bash
+<span class="ln">12</span> <span class="t-dim">#</span> start the dev server
+<span class="ln">13</span> <mark>npm run dev</mark>
+<span class="ln">14</span> ```</pre>
+                <p class="file-name">package.json</p>
+                <pre class="code">"scripts": {
+  "start": "node src/index.js",
+  "test": "node --test"
+}</pre>
+              </div>
+              <div class="terminal">
+                <div class="term-bar" aria-hidden="true"><span></span><span></span><span></span><b>CLI</b></div>
+                <pre class="term-body"><span class="t-sec">Documentation · node/docs-script-drift</span>
+  <span class="t-err">error</span>    README.md tells the reader to run "npm dev",
+           which is not a declared script
+           <span class="t-dim">node/docs-script-not-found · confidence: high</span>
+           <span class="t-dim">expected: a script named "dev" in package.json</span>
+           <span class="t-dim">found:    package.json scripts: start, test</span>
+           <span class="t-dim">at README.md:13 — in a shell code block</span>
+           <span class="t-fix">fix: Update README.md, or declare "dev" in package.json.</span>
+
+1 blocker · 0 warnings · 6 checks verified
+<span class="t-blocked">BLOCKED</span>   <span class="t-dim">exit code 1</span></pre>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel" role="tabpanel" id="panel-node" aria-labelledby="tab-node" tabindex="0">
+            <div class="panel-grid">
+              <div class="files">
+                <p class="file-name">package.json</p>
+                <pre class="code">"engines": { <mark>"node": "&gt;=22"</mark> }</pre>
+                <p class="file-name">.nvmrc</p>
+                <pre class="code"><mark>18.20.4</mark></pre>
+              </div>
+              <div class="terminal">
+                <div class="term-bar" aria-hidden="true"><span></span><span></span><span></span><b>CLI</b></div>
+                <pre class="term-body"><span class="t-sec">Project · node/node-version-declaration</span>
+  <span class="t-err">error</span>    Conflicting Node.js requirements: package.json#engines.node
+           says "&gt;=22", .nvmrc says "18.20.4"
+           <span class="t-dim">No single Node.js version satisfies both declarations, so</span>
+           <span class="t-dim">whichever one a contributor follows, the other is violated.</span>
+           <span class="t-dim">found:    &gt;=22 vs 18.20.4</span>
+           <span class="t-fix">fix: Align the declarations on one supported version range.</span>
+
+1 blocker · 0 warnings · 5 checks verified
+<span class="t-blocked">BLOCKED</span>   <span class="t-dim">exit code 1</span></pre>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel" role="tabpanel" id="panel-env" aria-labelledby="tab-env" tabindex="0">
+            <div class="panel-grid">
+              <div class="files">
+                <p class="file-name">src/payments.js</p>
+                <pre class="code"><span class="ln">1</span> export const paymentsUrl = <mark>process.env.PAYMENTS_API_URL</mark>;</pre>
+                <p class="file-name">.env.example</p>
+                <pre class="code"># Copy this file to .env
+DATABASE_URL=
+PORT=3000</pre>
+              </div>
+              <div class="terminal">
+                <div class="term-bar" aria-hidden="true"><span></span><span></span><span></span><b>CLI</b></div>
+                <pre class="term-body"><span class="t-sec">Configuration · node/env-contract</span>
+  <span class="t-warn">warning</span>  PAYMENTS_API_URL is read by the code
+           but not listed in .env.example
+           <span class="t-dim">node/env-var-undocumented · confidence: medium</span>
+           <span class="t-dim">SetupGuard infers this from source code, so the variable</span>
+           <span class="t-dim">may in fact be optional.</span>
+           <span class="t-dim">at src/payments.js:1 — reads PAYMENTS_API_URL</span>
+           <span class="t-fix">fix: Add PAYMENTS_API_URL to .env.example, or treat this finding</span>
+           <span class="t-fix">     as expected if the variable is genuinely optional.</span>
+
+0 blockers · 1 warning · 6 checks verified
+<span class="t-warns">WARNINGS</span>   <span class="t-dim">exit code 0</span>
+<span class="t-dim">(warnings fail the run only with --fail-on warning)</span></pre>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel" role="tabpanel" id="panel-pr" aria-labelledby="tab-pr" tabindex="0">
+            <div class="panel-grid">
+              <div class="files">
+                <p class="file-name">Pull request diff · README.md</p>
+                <pre class="code diff"><span class="ln">249</span>  pnpm install
+<span class="ln">250</span>  pnpm check      # lint + typecheck + test
+<span class="ln d-add">251</span> <mark>+pnpm run serve</mark></pre>
+                <p class="file-name">Annotation on the diff</p>
+                <div class="annotation">
+                  <p class="ann-title"><span class="t-err">Error</span> · README.md:251</p>
+                  <p class="ann-head">SetupGuard: new · node/docs-script-drift</p>
+                  <p>README.md tells the reader to run "pnpm serve", which is not a declared script</p>
+                </div>
+              </div>
+              <div class="terminal">
+                <div class="term-bar" aria-hidden="true"><span></span><span></span><span></span><b>GitHub Actions · SetupGuard job log</b></div>
+                <pre class="term-body">SetupGuard — pull request #2
+Compared with base 5e8be85acc8c (merge checkout); 1 file(s) changed
+<span class="t-dim">GitHub API requests (5)</span>
+
+Result: <span class="t-blocked">FAIL</span>
+  - This pull request introduces 1 blocking problem(s)
+
+New in this pull request (1):
+  <span class="t-err">error</span>   README.md:251  README.md tells the reader to run "pnpm serve",
+                 which is not a declared script
+          <span class="t-fix">fix: Update README.md, or declare "serve" in package.json.</span></pre>
+              </div>
+            </div>
+            <p class="panel-note">From a real run in this repository: <a href="https://github.com/Jovinull/SetupGuard/actions/runs/41636249068">failing</a>, then <a href="https://github.com/Jovinull/SetupGuard/actions/runs/41636459753">passing</a> after the line was removed. Problems that were already on the base branch are listed in the job summary but do not fail the pull request.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="how" class="section band" aria-labelledby="how-title">
+      <div class="wrap">
+        <h2 id="how-title" class="kicker-title"><span class="kicker">How it works</span>Deterministic, read-only, explainable</h2>
+        <ol class="steps">
+          <li>
+            <h3>Read what the repository declares</h3>
+            <p>Manifests, lockfiles, version files, Markdown and source code are read as data. SetupGuard never runs <code>install</code>, builds, tests or any script from the project, and does not follow paths outside it.</p>
+          </li>
+          <li>
+            <h3>Check it with fixed rules</h3>
+            <p>Every finding has a stable code, a confidence level, the file and line it comes from, and a suggested fix. No model, no heuristics that change between runs: the same files always produce the same report.</p>
+          </li>
+          <li>
+            <h3>Aggregate honestly</h3>
+            <dl class="states">
+              <div><dt class="s-ready">READY</dt><dd>every check that applied concluded, and none found anything</dd></div>
+              <div><dt class="s-warn">WARNINGS</dt><dd>the contract is degraded, but the project can still run</dd></div>
+              <div><dt class="s-blocked">BLOCKED</dt><dd>someone following the repository's own instructions is stuck</dd></div>
+              <div><dt class="s-inc">INCOMPLETE</dt><dd>part of the diagnosis did not happen — never reported as a pass</dd></div>
+            </dl>
+          </li>
+          <li>
+            <h3>On a pull request, compare with the base</h3>
+            <p>The GitHub Action diagnoses the checked-out pull request, then uses the GitHub REST API to learn exactly what changed and what the base looked like, and diagnoses the base too. Only the files a check actually reads are fetched.</p>
+            <ul class="compare">
+              <li><span class="pill pill-new">new</span> not on the base — fails the job (errors by default)</li>
+              <li><span class="pill pill-raised">raised</span> on the base as a warning, now an error — counts as introduced</li>
+              <li><span class="pill pill-old">pre-existing</span> already on the base — listed, not failed</li>
+            </ul>
+            <p class="api">REST calls: <code>pulls/{n}</code> · <code>git/commits/{sha}</code> · <code>pulls/{n}/files</code> (paginated) · <code>contents/{path}?ref={base}</code></p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="interfaces" class="section" aria-labelledby="interfaces-title">
+      <div class="wrap">
+        <h2 id="interfaces-title" class="kicker-title"><span class="kicker">Interfaces</span>One engine, three places to use it</h2>
+        <div class="cards">
+          <article class="card">
+            <p class="card-tag">CI · pull requests</p>
+            <h3>GitHub Action</h3>
+            <p>Reports what a pull request introduces as annotations on the diff and a job summary listing every finding: new, already on the base, or not comparable.</p>
+            <ul class="specs">
+              <li><span class="k">Event</span><span class="v"><code>pull_request</code> (<code>pull_request_target</code> is refused)</span></li>
+              <li><span class="k">Token</span><span class="v"><code>contents: read</code>, <code>pull-requests: read</code></span></li>
+              <li><span class="k">Outputs</span><span class="v"><code>result</code> · <code>readiness</code> · <code>new-errors</code> · <code>new-warnings</code></span></li>
+              <li><span class="k">Result</span><span class="v"><code>pass</code> · <code>fail</code> · <code>incomplete</code> (always fails)</span></li>
+            </ul>
+          </article>
+          <article class="card">
+            <p class="card-tag">Editor</p>
+            <h3>VS Code extension</h3>
+            <p>Diagnoses every workspace folder on open and again when a relevant file changes. Starts no process, so it is safe in untrusted workspaces.</p>
+            <ul class="statusbar" aria-label="Status bar states">
+              <li><span class="sb sb-ready" aria-hidden="true"></span>SetupGuard: Ready</li>
+              <li><span class="sb sb-warn" aria-hidden="true"></span>SetupGuard: Warnings</li>
+              <li><span class="sb sb-blocked" aria-hidden="true"></span>SetupGuard: Blocked</li>
+              <li><span class="sb sb-inc" aria-hidden="true"></span>SetupGuard: Incomplete</li>
+            </ul>
+            <p class="small">Findings in the Problems panel, anchored to the file and line. Commands: <em>SetupGuard: Run Diagnosis</em>, <em>SetupGuard: Show Report</em>.</p>
+          </article>
+          <article class="card">
+            <p class="card-tag">Terminal · scripts</p>
+            <h3>Command line</h3>
+            <p><code>setupguard [doctor|check] [path]</code> with human or <code>--json</code> output, <code>--level</code> and <code>--fail-on</code>.</p>
+            <ul class="specs">
+              <li><span class="k">Exit 0</span><span class="v">nothing at the <code>--fail-on</code> threshold</span></li>
+              <li><span class="k">Exit 1</span><span class="v">findings at or above it</span></li>
+              <li><span class="k">Exit 2</span><span class="v">invalid usage or path</span></li>
+              <li><span class="k">Exit 3</span><span class="v">incomplete — not a pass</span></li>
+            </ul>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="install" class="section band" aria-labelledby="install-title">
+      <div class="wrap">
+        <h2 id="install-title" class="kicker-title"><span class="kicker">Get started</span>Install</h2>
+
+        <div class="install">
+          <div class="install-item">
+            <h3>GitHub Action</h3>
+            <p>Add <code>.github/workflows/setupguard.yml</code>. The action is pinned to the exact commit of release v0.1.0 — a SHA cannot be moved, a tag can.</p>
+            <div class="codeblock">
+              <button class="copy" type="button" data-copy="copy-action" aria-describedby="copy-status">Copy</button>
+              <pre id="copy-action" tabindex="0">name: SetupGuard
+on:
+  pull_request:
+permissions:
+  contents: read
+  pull-requests: read
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5; keep the default ref
+        with:
+          persist-credentials: false
+      - uses: Jovinull/SetupGuard@58250c8c55b2b1c448745171e56748c458ea5c30 # v0.1.0</pre>
+            </div>
+            <p class="small">Inputs: <code>token</code> (defaults to the workflow's <code>GITHUB_TOKEN</code>), <code>path</code>, <code>fail-on</code> (<code>error</code> or <code>warning</code>).</p>
+          </div>
+
+          <div class="install-item">
+            <h3>VS Code extension</h3>
+            <p>Download <a href="https://github.com/Jovinull/SetupGuard/releases/download/v0.1.0/setupguard-0.1.0.vsix"><code>setupguard-0.1.0.vsix</code></a> and <a href="https://github.com/Jovinull/SetupGuard/releases/download/v0.1.0/SHA256SUMS.txt"><code>SHA256SUMS.txt</code></a> from the release, then:</p>
+            <div class="codeblock">
+              <button class="copy" type="button" data-copy="copy-vsix" aria-describedby="copy-status">Copy</button>
+              <pre id="copy-vsix" tabindex="0">sha256sum -c SHA256SUMS.txt
+code --install-extension setupguard-0.1.0.vsix</pre>
+            </div>
+            <p class="small">Requires VS Code 1.90 or newer. Not published to the VS Code Marketplace or Open VSX.</p>
+          </div>
+
+          <div class="install-item">
+            <h3>CLI, from source</h3>
+            <p>Not published to npm. Needs Node.js 22.13 or newer and pnpm 11 (via Corepack).</p>
+            <div class="codeblock">
+              <button class="copy" type="button" data-copy="copy-cli" aria-describedby="copy-status">Copy</button>
+              <pre id="copy-cli" tabindex="0">git clone https://github.com/Jovinull/SetupGuard.git
+cd SetupGuard
+git switch --detach v0.1.0
+pnpm install --frozen-lockfile
+pnpm build
+node packages/cli/dist/bin.js path/to/your/repo</pre>
+            </div>
+          </div>
+        </div>
+        <p class="sr-only" id="copy-status" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <section id="limits" class="section" aria-labelledby="limits-title">
+      <div class="wrap narrow">
+        <h2 id="limits-title" class="kicker-title"><span class="kicker">Scope</span>What v0.1.0 does not do</h2>
+        <ul class="limits">
+          <li><strong>Node.js, JavaScript and TypeScript only.</strong> Other ecosystems are not analysed.</li>
+          <li><strong>An early 0.x release.</strong> Checks, outputs and configuration may change between minor versions.</li>
+          <li><strong>Static checks in CI.</strong> The Action does not check Node.js versions or tools on the runner, which is not your contributors' machine.</li>
+          <li><strong>Scan limits.</strong> Large repositories (more than 50 files under <code>docs/</code>, deeper than 8 levels) and pull requests with more than 3000 changed files are reported <em>incomplete</em> until narrowed with <code>ignore:</code> in <code>.setupguard.yml</code>.</li>
+          <li><strong>No automatic fixes.</strong> Every finding suggests one; SetupGuard never changes your files.</li>
+          <li><strong>Known false positive.</strong> A README that changes directory into another project in an earlier code block.</li>
+        </ul>
+        <p class="note">The full list, and the evidence behind each claim on this page, are in the <a href="https://github.com/Jovinull/SetupGuard/blob/main/Notes/17-github-action-implementada.md">design record</a>.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-grid">
+      <div>
+        <a class="brand" href="./">
+          <svg class="mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M16 2.5 4.5 6.8v8.4c0 7 4.9 12.4 11.5 14.3 6.6-1.9 11.5-7.3 11.5-14.3V6.8L16 2.5Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="m10.5 16.2 3.8 3.8 7.4-8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>SetupGuard</span>
+        </a>
+        <p class="small">Open source under the <a href="https://github.com/Jovinull/SetupGuard/blob/main/LICENSE">MIT License</a>. Maintained by <a href="https://github.com/Jovinull">Jovinull</a>.</p>
+        <p class="small muted">An independent project, not affiliated with or endorsed by GitHub or Microsoft.</p>
+      </div>
+      <nav aria-label="Project">
+        <h2 class="footer-title">Project</h2>
+        <ul>
+          <li><a href="https://github.com/Jovinull/SetupGuard">Repository</a></li>
+          <li><a href="https://github.com/Jovinull/SetupGuard/releases/tag/v0.1.0">Release v0.1.0</a></li>
+          <li><a href="https://github.com/Jovinull/SetupGuard#readme">Documentation</a></li>
+          <li><a href="https://github.com/Jovinull/SetupGuard/blob/main/CHANGELOG.md">Changelog</a></li>
+        </ul>
+      </nav>
+      <nav aria-label="Support">
+        <h2 class="footer-title">Support</h2>
+        <ul>
+          <li><a href="https://github.com/Jovinull/SetupGuard/issues">Report a bug</a></li>
+          <li><a href="mailto:felipejovinogamerplay@gmail.com">felipejovinogamerplay@gmail.com</a></li>
+          <li><a href="https://github.com/Jovinull/SetupGuard/blob/main/SECURITY.md">Security policy</a></li>
+          <li><a href="https://github.com/Jovinull/SetupGuard/security/advisories/new">Report a vulnerability privately</a></li>
+        </ul>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>
