@@ -125,10 +125,14 @@ Design record and evidence: [Notes/17](Notes/17-github-action-implementada.md).
 ### Versions
 
 There is no tag yet. Until one exists, pin a full commit SHA; a SHA cannot be
-moved, a tag can. Release tags (`v0.x.y` plus a moving major tag) are planned
-but not published.
+moved, a tag can. The first release will be `v0.1.0` (see
+[CHANGELOG.md](CHANGELOG.md)); the procedure is in [RELEASING.md](RELEASING.md).
+Even after it exists, pinning a SHA remains the recommendation.
 
 ## Try it
+
+The CLI is not published to npm yet; run it from a clone (Node.js >= 22.13,
+pnpm 11 through Corepack):
 
 ```bash
 pnpm install
@@ -138,6 +142,9 @@ node packages/cli/dist/bin.js fixtures/broken-node-project
 ```
 
 ### In VS Code
+
+The extension is not on any marketplace; build the `.vsix` and install it by
+hand (the release, once published, will attach it):
 
 ```bash
 pnpm --filter setupguard run package
@@ -266,7 +273,10 @@ for what is still open.
 Ubuntu, macOS and Windows, against the lowest Node this project supports
 (22.13.0) and the current LTS (24), plus a dependency audit, the VSIX package
 check and the GitHub Action bundle check. `.github/workflows/setupguard.yml`
-runs the action on this repository's own pull requests.
+runs the action on this repository's own pull requests, and
+`.github/workflows/audit.yml` repeats the dependency audit weekly on the
+default branch, so an overdue audit exception turns red even when nobody
+pushes.
 
 Production dependencies have no known advisory (`pnpm audit --prod`). The full
 audit carries **one accepted exception**, not a fix: `minimatch`
@@ -275,8 +285,8 @@ typescript-eslint, `@vscode/vsce`). No released version of those tools uses the
 fixed `minimatch` yet; the vulnerable code needs `optimizationLevel >= 2`,
 which none of them sets, and `minimatch` is not in the action bundle or the
 VSIX. The exception is scoped to that one advisory in `pnpm-workspace.yaml`,
-and `scripts/check-audit-exceptions.mjs` fails CI once its review date
-(2026-11-30) passes. Analysis and run history:
+and `scripts/check-audit-exceptions.mjs` fails CI — and the weekly audit — once
+its review date (2026-11-30) passes. Analysis and run history:
 [Notes/17](Notes/17-github-action-implementada.md).
 
 One thing a green matrix still does not prove:

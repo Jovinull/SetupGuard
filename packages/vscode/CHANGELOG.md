@@ -15,3 +15,7 @@ First installable build.
 - `SetupGuard: Run Diagnosis` and `SetupGuard: Show Report` commands.
 - Supported in untrusted workspaces: the implemented verification levels start
   no process.
+- Writing to `process.env` (`=`, `??=`, `||=`, `delete`) is not reported as
+  depending on the variable.
+- `out/THIRD_PARTY_NOTICES.txt` carries the licenses of the code bundled into
+  the extension (`semver`, `yaml`).

@@ -246,30 +246,63 @@ uma premissa documentada: a Action analisa a árvore de trabalho como a
 encontra. O erro (`fail` por blocker) no fluxo completo está coberto pelos
 testes de aceitação; no GitHub Actions ainda não foi observado.
 
+### Teste negativo e positivo no GitHub Actions (2026-11-03)
+
+Um PR temporário (#2, rascunho, **contra `feat/github-action`**, nunca contra
+`main`) a partir de `5e8be85`, com dois commits:
+
+| Commit | O que fez | Execução do SetupGuard | Resultado |
+|---|---|---|---|
+| `f7d18a1` | o bloco "Development" do README passou a mandar rodar `pnpm run serve`, script inexistente | [41636249068](https://github.com/Jovinull/SetupGuard/actions/runs/41636249068) | **falhou**: `Result: FAIL — This pull request introduces 1 blocking problem(s)`; base `5e8be85` (primeiro pai do merge commit), 1 arquivo, 5 requisições |
+| `aa93898` | removeu a linha (árvore idêntica a `feat/github-action`) | [41636459753](https://github.com/Jovinull/SetupGuard/actions/runs/41636459753) | **passou**: `Result: PASS`; 0 arquivos no diff líquido, 4 requisições; os 10 checks do PR verdes |
+
+Evidência observada:
+
+- **anotação gravada pelo GitHub**, lida pela API de check runs
+  (`GET /repos/Jovinull/SetupGuard/check-runs/125918082481/annotations`):
+  `failure README.md:251 [SetupGuard: new · node/docs-script-drift] README.md
+  tells the reader to run "pnpm serve", which is not a declared script`. Na
+  execução positiva, nenhuma anotação do SetupGuard (só o aviso do próprio
+  GitHub sobre o rótulo `ubuntu-latest`);
+- **log** de cada execução com veredito, base e requisições;
+- **concordância independente**: no commit com regressão, todas as pernas da
+  matriz do `ci.yml` que terminaram falharam no auto-diagnóstico da CLI
+  (`BLOCKED`, o mesmo achado); uma perna aparece `cancelled` porque o push
+  seguinte a substituiu (`cancel-in-progress`).
+
+**Não observado por mim:** o *job summary* renderizado. A API REST não o expõe,
+a página pública da execução não o carrega sem login e a extensão do Chrome
+não estava conectada. O conteúdo do summary é coberto pelos testes de
+aceitação; a renderização pode ser vista nos links acima.
+
+O PR #2 foi fechado e só a branch `tmp/negative-action-test` foi apagada;
+`main` e `feat/github-action` não foram alteradas pelo teste.
+
 ### O que está provado e o que não está
 
-Provado no GitHub Actions (PR #1, execuções `8d14be5` e `5d2250c`):
+Provado no GitHub Actions:
 
 - o runner aceita `node24` e executa `packages/github-action/dist/index.cjs`
   via `action.yml`; o job `github action bundle` prova, na mesma execução, que
   esse arquivo é idêntico ao reconstruído a partir das fontes;
 - chamadas reais à API com o `GITHUB_TOKEN` (só leitura), paginação real,
   base correta;
-- um PR sem regressões passa.
+- um PR sem regressões passa (PR #1, 131 arquivos; PR #2 após a correção);
+- **um PR que introduz um blocker falha**, com anotação no arquivo e linha
+  (PR #2, acima).
 
-Provado localmente com a API real (ver "Demonstração" abaixo): um PR que
-introduz um problema falha (exit 1), e uma análise incompleta não passa.
+Provado localmente com a API real: uma análise incompleta não passa (exit 1).
 
 **Não provado ainda:**
 
-- o caso negativo **no próprio GitHub Actions** (anotação de erro renderizada no
-  diff, job vermelho por regressão): exige um PR com uma regressão de verdade,
-  e este trabalho só tem autorização para enviar commits ao `feat/github-action`;
 - PR vindo de **fork** neste repositório (aprovação de primeira contribuição,
-  token só leitura). Nota: aqui o workflow usa `uses: ./`, então o código da
-  Action que roda num PR é o do próprio PR — um fork pode alterá-lo. Roda com
-  token só leitura e sem segredos, a mesma exposição do `ci.yml`, que já executa
-  código do PR. Consumidores que fixam `Jovinull/SetupGuard@<sha>` não têm isso;
+  token só leitura). Exige uma conta que o mantenedor controle fora deste
+  repositório; não foi simulado. Nota: aqui o workflow usa `uses: ./`, então o
+  código da Action que roda num PR é o do próprio PR — um fork pode alterá-lo.
+  Roda com token só leitura e sem segredos, a mesma exposição do `ci.yml`, que
+  já executa código do PR. Consumidores que fixam `Jovinull/SetupGuard@<sha>`
+  não têm isso;
+- a renderização do *job summary* (ver acima);
 - fronteira de symlink no Windows (como no resto do projeto).
 
 ## Limitações atuais
@@ -281,11 +314,14 @@ introduz um problema falha (exit 1), e uma análise incompleta não passa.
 - repositórios que excedem os limites de varredura do motor (50 arquivos em
   `docs/`, profundidade 8) → `incomplete` até configurar `ignore:`;
 - custo de requisições: arquivos em projetos aninhados são consultados na base
-  mesmo sendo descartados depois (64 requisições para 118 arquivos neste PR);
+  mesmo sendo descartados depois (71 requisições para 131 arquivos no PR #1);
 - symlink alterado e lido diretamente → `incomplete`;
 - a Action confia que a árvore de trabalho é o commit em checkout: um passo
   anterior do workflow que altere arquivos altera o que é analisado;
-- falso positivo conhecido do motor: `cd` entre blocos de documentação.
+- falso positivo conhecido do motor: `cd` entre blocos de documentação;
+- o bundle da extensão VS Code usa o `dist/` compilado dos pacotes do
+  workspace: é preciso `pnpm run build` antes de empacotar (o CI e o
+  `RELEASING.md` fazem isso).
 
 ## Bugs corrigidos neste PR
 
@@ -293,14 +329,21 @@ introduz um problema falha (exit 1), e uma análise incompleta não passa.
 - Action: severidade elevada pelo PR classificada como preexistente;
 - Action: relato de `incomplete` sem dizer qual check nem por quê (Vite);
 - build: bundle dependia de `dist/` compilado (falha do CI em `2cf8751`);
-- docs: README disparava o auto-diagnóstico (clone limpo).
+- docs: README disparava o auto-diagnóstico (clone limpo);
+- distribuição: o bundle da Action e o VSIX embutiam `semver` e `yaml` (ISC)
+  sem os avisos de licença que a ISC exige "in all copies"; agora cada
+  artefato leva `THIRD_PARTY_NOTICES.txt`, gerado a partir do metafile do
+  esbuild (só o que foi de fato embutido), e o build falha se um pacote
+  embutido não tiver arquivo de licença.
 
-## Futuro (não implementado)
+## Backlog (fora do escopo do primeiro marco)
 
-- tags de release (`v0.x.y` imutável + major móvel) e Marketplace, que exige
-  um repositório de distribuição sem workflows;
-- excluir projetos aninhados dentro do `walk` (menos requisições);
-- várias raízes por job; seguir `cd` na documentação;
+- excluir projetos aninhados dentro do `walk` (menos requisições à API);
+- seguir `cd` na documentação; mais formas de drift (arquivos, portas);
+- várias raízes por job; suporte melhor a repositórios grandes sem `ignore:`;
+- bundle da extensão a partir do `src/` (como o da Action), eliminando a
+  dependência de um build prévio;
+- PR de fork real; repositório de distribuição para o Marketplace;
 - canal privado de segurança e e-mail de suporte (dependem do mantenedor).
 
 ## Histórico de execuções no GitHub
@@ -436,8 +479,17 @@ consumidores foi descartado.
   ignorada sem registro, ou se um registro ficar sem GHSA correspondente.
   Testado: válido até 2026-11-30, falha em 2026-12-01, falha para exceção não
   documentada, registro obsoleto e data inválida.
-- Limite do prazo: o CI só roda em push/PR. Se nada for enviado depois de
-  2026-11-30, a falha só aparece no próximo envio.
+- Limite do prazo: o `ci.yml` só roda em push/PR. Por isso
+  `.github/workflows/audit.yml` repete o guard e o `pnpm audit` toda segunda
+  às 06:17 UTC (e sob demanda), só com `contents: read`, sem matriz e com
+  `pnpm install --ignore-scripts`. O GitHub só agenda e só permite o disparo
+  manual de workflows do branch padrão: o agendamento começa a valer **depois
+  do merge**. Até lá, o mesmo workflow roda em PRs que alterem os arquivos da
+  política (ele próprio, o script, `pnpm-workspace.yaml`, o lockfile), que é
+  como ele é exercitado antes do merge. Ressalvas do GitHub: falha de execução
+  agendada é notificada a quem alterou o cron por último, e workflows
+  agendados são desativados após 60 dias sem atividade num repositório
+  público.
 
 ### Na revisão
 

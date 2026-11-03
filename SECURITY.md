@@ -22,6 +22,13 @@ issue at <https://github.com/Jovinull/SetupGuard/issues> that says only that you
 have a security report and asks for a private contact — no details, no proof of
 concept.
 
+## Dependency advisories
+
+`pnpm audit` runs on every push and pull request and weekly on the default
+branch. An advisory can be accepted only as a recorded, dated exception (see
+CONTRIBUTING.md); exceptions are listed in `pnpm-workspace.yaml` and fail CI
+once their review date passes. Accepting an advisory is not fixing it.
+
 ## Supported versions
 
 Only the latest commit on `main`. No release has been tagged yet.
